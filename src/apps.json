@@ -1,0 +1,21 @@
+{
+    "Basic Apps":{
+        "Steam": "Valve.Steam",
+        "Discord": "Discord.DiscordDesktop",
+        "Spotify": "SpotifyAB.SpotifyMusic",
+        "Chrome": "Google.Chrome",
+        "Brave": "BraveSoftware.BraveBrowser"
+    },
+    "Development Apps":{
+        "Visual Studio Code": "Microsoft.VisualStudioCode",
+        "GitHub Desktop": "GitHub.GitHubDesktop",
+        "Python": "Python.Python.3.9"
+    },
+    "Tools":{
+        "Notepad++": "Notepad++.Notepad++",
+        "7-Zip": "7-Zip.7-Zip",
+        "Lightshot": "Lightshot.Lightshot",
+        "NVCleanstall": "TechPowerUp.NVCleanstall"
+    }
+    
+}
