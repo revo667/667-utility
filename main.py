@@ -2,6 +2,9 @@ import ctypes
 import sys
 import warnings
 from src.ui.app import run_app
+from core.setup import install_font
+
+install_font()
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
