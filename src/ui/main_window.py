@@ -1,139 +1,138 @@
-from PySide6.QtWidgets import (QMainWindow, QWidget, QHBoxLayout, QListWidget,
-                                QStackedWidget, QGraphicsOpacityEffect)
-from PySide6.QtCore import QPropertyAnimation, QEasingCurve
-from src.ui.views.dashboard import DashboardView
-from src.ui.style import get_stylesheet
-from src.ui.views.optimizer import OptimizerPage
-from src.ui.views.uninstaller import UninstallerView
-from src.ui.views.installer import InstallerView
+import traceback
+
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
+    QGraphicsOpacityEffect, QHBoxLayout, QLabel, QListWidget, QMainWindow,
+    QStackedWidget, QVBoxLayout, QWidget,
+)
+
+from core.platform_utils import platform_name
+from src.ui.pages import available_pages
 from src.ui.rain import RainEffect
+from src.ui.style import get_stylesheet
+from src.ui.theme import Colors
+
+SITE_URL = "https://www.revo667.com"
+SITE_LABEL = "www.revo667.com"
+
+
+class PlaceholderPage(QWidget):
+    def __init__(self, title: str, message: str, parent=None):
+        super().__init__(parent)
+        layout = QVBoxLayout(self)
+        layout.setContentsMargins(32, 32, 32, 32)
+        layout.setSpacing(12)
+        layout.setAlignment(Qt.AlignCenter)
+
+        title_label = QLabel(title)
+        title_label.setObjectName("PageTitle")
+        title_label.setAlignment(Qt.AlignCenter)
+
+        message_label = QLabel(message)
+        message_label.setObjectName("PageSubtitle")
+        message_label.setAlignment(Qt.AlignCenter)
+        message_label.setWordWrap(True)
+
+        layout.addWidget(title_label)
+        layout.addWidget(message_label)
+
+
+class SidebarFooter(QLabel):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setObjectName("SidebarFooter")
+        self.setTextFormat(Qt.RichText)
+        self.setOpenExternalLinks(True)
+        self.setAlignment(Qt.AlignCenter)
+        self.setCursor(Qt.PointingHandCursor)
+        self.setText(
+            f'<a href="{SITE_URL}" '
+            f'style="color: {Colors.TEXT_SECONDARY}; text-decoration: none;">'
+            f'{SITE_LABEL}</a>'
+        )
+        self._effect = QGraphicsOpacityEffect(self)
+        self._effect.setOpacity(0.35)
+        self.setGraphicsEffect(self._effect)
+
+    def enterEvent(self, event):
+        self._effect.setOpacity(0.85)
+        super().enterEvent(event)
+
+    def leaveEvent(self, event):
+        self._effect.setOpacity(0.35)
+        super().leaveEvent(event)
 
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("667 Utility")
+        self.setWindowTitle(f"667 Utility — {platform_name()}")
         self.resize(1100, 700)
-        self.setMinimumSize(900, 600)
 
         root = QWidget()
         root.setObjectName("RootWidget")
         self.setCentralWidget(root)
 
         layout = QHBoxLayout(root)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.setSpacing(0)
+
+        sidebar_container = QWidget()
+        sidebar_container.setObjectName("SidebarContainer")
+        sidebar_container.setFixedWidth(220)
+        sidebar_layout = QVBoxLayout(sidebar_container)
+        sidebar_layout.setContentsMargins(0, 0, 0, 0)
+        sidebar_layout.setSpacing(0)
 
         self.sidebar = QListWidget()
         self.sidebar.setObjectName("Sidebar")
-        self.sidebar.addItems(["  Dashboard", "  Optimizer", "  Installer", "  Uninstaller"])
-        self.sidebar.setFixedWidth(200)
+
+        self.footer = SidebarFooter()
+
+        sidebar_layout.addWidget(self.sidebar, stretch=1)
+        sidebar_layout.addWidget(self.footer)
 
         self.pages = QStackedWidget()
-        self.optimizer = OptimizerPage()
-        self.dashboard = DashboardView(optimizer_page=self.optimizer)
-        self.installer = InstallerView()
-        self.uninstaller = UninstallerView()
+        self._specs = available_pages()
+        self._widgets = {}
 
-        self._page_list = [self.dashboard, self.optimizer, self.installer, self.uninstaller]
-        self._effects = []
-        self._fade_anims = []
+        if not self._specs:
+            self.pages.addWidget(PlaceholderPage(
+                "Desteklenmeyen Platform",
+                f"{platform_name()} icin tanimli bir sayfa yok.",
+            ))
+        else:
+            for spec in self._specs:
+                self.sidebar.addItem(spec.label)
+                widget = self._build_page(spec)
+                self._widgets[spec.key] = widget
+                self.pages.addWidget(widget)
 
-        for page in self._page_list:
-            self.pages.addWidget(page)
-            effect = QGraphicsOpacityEffect()
-            effect.setOpacity(1.0)
-            page.setGraphicsEffect(effect)
-            self._effects.append(effect)
+        layout.addWidget(sidebar_container)
+        layout.addWidget(self.pages)
 
-            anim = QPropertyAnimation(effect, b"opacity")
-            anim.setDuration(200)
-            anim.setEasingCurve(QEasingCurve.OutCubic)
-            self._fade_anims.append(anim)
+        self.sidebar.currentRowChanged.connect(self.pages.setCurrentIndex)
+        if self._specs:
+            self.sidebar.setCurrentRow(0)
 
-        layout.addWidget(self.sidebar)
-        layout.addWidget(self.pages, stretch=1)
-
-        self._current_index = 0
-        self._animating = False
-
-        self._anim_sidebar_pulse = QPropertyAnimation(self.sidebar, b"maximumWidth")
-        self._anim_sidebar_pulse.setDuration(150)
-        self._anim_sidebar_pulse.setEasingCurve(QEasingCurve.OutCubic)
-
-        self.sidebar.currentRowChanged.connect(self._switch_page)
-        self.sidebar.setCurrentRow(0)
-
-        self.rain_background = RainEffect(root, drop_count=80)
+        self.rain_background = RainEffect(root, drop_count=120)
         self.rain_background.setGeometry(root.rect())
         self.rain_background.lower()
 
         self.setStyleSheet(get_stylesheet())
 
-    def _switch_page(self, index):
-        if self._animating or index == self._current_index:
-            return
-        self._animating = True
-        self._next_index = index
-        if index == 0:
-            self.dashboard.refresh()
-        self._sidebar_pulse()
-        self._fade_out(self._current_index)
-
-    def _fade_out(self, index):
-        anim = self._fade_anims[index]
-        anim.stop()
-        anim.setStartValue(1.0)
-        anim.setEndValue(0.0)
+    def _build_page(self, spec) -> QWidget:
         try:
-            anim.finished.disconnect()
-        except RuntimeError:
-            pass
-        anim.finished.connect(lambda: self._on_fade_out_done(index))
-        anim.start()
+            return spec.factory()
+        except Exception:
+            detail = traceback.format_exc(limit=3).strip().splitlines()[-1]
+            return PlaceholderPage(
+                spec.label,
+                f"Bu sayfa yuklenemedi.\n\n{detail}",
+            )
 
-    def _on_fade_out_done(self, old_index):
-        try:
-            self._fade_anims[old_index].finished.disconnect()
-        except RuntimeError:
-            pass
-        self.pages.setCurrentIndex(self._next_index)
-        self._current_index = self._next_index
-        self._fade_in(self._next_index)
-
-    def _fade_in(self, index):
-        anim = self._fade_anims[index]
-        anim.stop()
-        anim.setStartValue(0.0)
-        anim.setEndValue(1.0)
-        try:
-            anim.finished.disconnect()
-        except RuntimeError:
-            pass
-        anim.finished.connect(self._on_fade_in_done)
-        anim.start()
-
-    def _on_fade_in_done(self):
-        try:
-            self._fade_anims[self._current_index].finished.disconnect()
-        except RuntimeError:
-            pass
-        self._animating = False
-
-    def _sidebar_pulse(self):
-        self._anim_sidebar_pulse.stop()
-        self._anim_sidebar_pulse.setStartValue(200)
-        self._anim_sidebar_pulse.setEndValue(206)
-        self._anim_sidebar_pulse.finished.connect(self._sidebar_pulse_back)
-        self._anim_sidebar_pulse.start()
-
-    def _sidebar_pulse_back(self):
-        self._anim_sidebar_pulse.finished.disconnect(self._sidebar_pulse_back)
-        self._anim_sidebar_pulse.setStartValue(206)
-        self._anim_sidebar_pulse.setEndValue(200)
-        self._anim_sidebar_pulse.start()
+    def page(self, key: str):
+        return self._widgets.get(key)
 
     def resizeEvent(self, event):
-        if hasattr(self, 'rain_background'):
+        if hasattr(self, "rain_background"):
             self.rain_background.setGeometry(self.centralWidget().rect())
         super().resizeEvent(event)
