@@ -23,6 +23,7 @@ A Windows system optimization tool built with Python and PySide6.
 ## Requirements
 
 - Windows 10 / 11
+- MacOS Latest
 - Python 3.11+
 - [uv](https://github.com/astral-sh/uv) (recommended) or pip
 - [JetBrainsMono Nerd Font](https://www.nerdfonts.com/font-downloads) installed on system
@@ -43,6 +44,8 @@ uv sync
 ## Running
 
 Must be run as Administrator for system tweaks to apply.
+
+For MacOS requirements must be accept while running app
 
 ```bash
 uv run main.py
