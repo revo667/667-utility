@@ -1,114 +1,104 @@
 # 667 Utility
 
-A Windows system optimization tool built with Python and PySide6.
+Windows ve macOS icin sistem optimizasyon, uygulama kurulum/kaldirma ve disk
+temizleme araci. PySide6 ile yazildi.
 
-![Python](https://img.shields.io/badge/Python-3.11+-blue)
-![PySide6](https://img.shields.io/badge/PySide6-6.x-green)
-![Platform](https://img.shields.io/badge/Platform-Windows-lightgrey)
-![License](https://img.shields.io/badge/License-MIT-purple)
-
----
-
-## Features
-
-- **System Optimizer** — Apply performance tweaks with one click. Disable unnecessary services, telemetry, Xbox bloat, and more. Each tweak is reversible.
-- **Registry Tweaks** — Apply curated `.reg` files for CPU, GPU, and system-level performance improvements.
-- **BAT Tweaks** — Run pre-configured batch scripts for BCD and input delay optimizations.
-- **Uninstaller** — Browse all installed programs and uninstall them. One-click Windows bloatware removal including Edge.
-- **App Installer** — Install apps via winget from a categorized list. Supports multi-select and batch install.
-- **Dashboard** — System info overview with applied tweak count.
+<p align="center">
+  <sub>revo667.com</sub>
+</p>
 
 ---
 
-## Requirements
+## Ozellikler
 
-- Windows 10 / 11
-- MacOS Latest
-- Python 3.11+
-- [uv](https://github.com/astral-sh/uv) (recommended) or pip
-- [JetBrainsMono Nerd Font](https://www.nerdfonts.com/font-downloads) installed on system
-- winget (for installer feature)
+Sidebar'daki sayfalar calistigin platforma gore otomatik belirlenir.
 
----
+| Sayfa | Platform | Ne yapar |
+|---|---|---|
+| **Dashboard** | Hepsi | CPU, RAM, disk ve calisma suresi ozeti |
+| **Optimizer** | Windows | Servis, registry ve guc plani tweak'leri — her biri geri alinabilir |
+| **Installer** | Windows / Linux | `winget` uzerinden toplu uygulama kurulumu |
+| **Installer** | macOS | Homebrew formula ve cask arama/kurulum |
+| **Uninstaller** | Windows | Kurulu programlari kaldirma + UWP bloatware temizligi |
+| **Uninstaller** | macOS | Uygulama + artik dosyalarini birlikte kaldirma |
+| **Cleaner** | macOS | Onbellek, log, Xcode artiklari — kategorili ve boyutlu tarama |
+| **Snapshots** | macOS | Time Machine yerel snapshot yonetimi |
+| **Ayarlar** | Hepsi | Animasyon, yenileme araligi ve onay tercihleri |
 
-## Installation
+## Kurulum
 
 ```bash
 git clone https://github.com/revo667/667-utility.git
 cd 667-utility
+
+# uv ile (onerilen — uv.lock kilitli surumleri kullanir)
 uv sync
+uv run main.py
+
+# ya da pip ile
+python -m venv .venv
+source .venv/bin/activate      # Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+python main.py
 ```
 
----
+Python 3.11 veya uzeri gerekir.
 
-## Running
+## Platform notlari
 
-Must be run as Administrator for system tweaks to apply.
+**Windows** — Optimizer ve Uninstaller yonetici hakki ister. Uygulama gerekirse
+kendini UAC istemiyle yeniden baslatir; reddedersen sinirli modda acilir.
 
-For MacOS requirements must be accept while running app
+**macOS** — Cleaner ve Uninstaller `~/Library` altini okur. Ilk acilista izin
+istenir. Terminal veya IDE icinden calistiriyorsan macOS izni **seni baslatan
+uygulamaya** atar; uygulama bunu tespit edip System Settings'te hangi girdiyi
+aramanı gerektigini soyler.
+
+**Guvenlik** — Temizlik islemleri varsayilan olarak dosyalari **cop kutusuna
+tasir**, kalici silmez. Snapshot inceltme 24 saatten yeni snapshot'lara
+dokunmaz. Korumali sistem yollari (`/System`, `~/Library/Keychains`, ...) her
+zaman disaridadir.
+
+## Proje yapisi
+
+```
+core/                 Platform mantigi — Qt'ye bagimli degil
+  platform_utils.py     Platform tespiti ve ortak yardimcilar
+  optimizations.py      Windows tweak'leri (uygula/geri al ciftleri)
+  installer.py          winget kurulumu
+  uninstaller.py        Windows program kaldirma + bloatware
+  search.py             winget paket arama
+  mac_cleaner.py        Kural tabanli cop tarama
+  mac_installer.py      Homebrew sarmalayici
+  mac_uninstaller.py    Uygulama + artik kaldirma
+  mac_permissions.py    TCC izin durumu
+  mac_responsible.py    Izni hangi uygulamanin aldigini tespit
+  mac_snapshots.py      Time Machine snapshot yonetimi
+
+src/ui/               Arayuz
+  theme.py              Renk, olcu, tipografi token'lari
+  style.py              Merkezi QSS — tek stil kaynagi
+  icons.py              Inline SVG ikon seti
+  toast.py              Kayan bildirimler
+  settings_store.py     Kalici kullanici tercihleri
+  fonts.py              Paketli font yukleyici
+  pages.py              Sayfa kayit defteri (platform filtreli)
+  main_window.py        Kabuk: baslik cubugu, sidebar, sayfa yigini
+  views/                Sayfalar
+```
+
+**Mimari kurali:** `core/` Qt bilmez, `src/ui/` sistem komutu calistirmaz.
+Widget'lar inline `setStyleSheet()` cagirmaz — gorunum farki bir Qt property'si
+ile ifade edilir ve secici `style.py` icine yazilir.
+
+## Gelistirme
 
 ```bash
-uv run main.py
+pip install -r requirements-dev.txt
+ruff check .          # lint
+ruff check --fix .    # otomatik duzelt
 ```
 
-Or right-click → Run as Administrator if using Python directly.
+## Lisans
 
----
-
-## Project Structure
-
-```
-667-utility/
-├── main.py
-├── assets/
-│   ├── bat/           # Batch scripts
-│   └── regs/          # Registry tweak files
-├── core/
-│   ├── optimizations.py
-│   ├── installer.py
-│   ├── uninstaller.py
-│   └── search.py
-└── src/
-    ├── ui/
-    │   ├── main_window.py
-    │   ├── style.py
-    │   ├── theme.py
-    │   └── views/
-    │       ├── dashboard.py
-    │       ├── optimizer.py
-    │       ├── optimizer_card.py
-    │       ├── installer.py
-    │       ├── uninstaller.py
-    │       └── modern_button.py
-    └── apps.json
-```
-
----
-
-## Optimizer Tweaks
-
-| Tweak | Description | Reversible |
-|---|---|---|
-| Disable SysMain | Reduces disk usage on SSDs | Yes |
-| High Performance Power Plan | Maximizes CPU performance | Yes |
-| Disable Telemetry | Stops Windows data collection | Yes |
-| Clear Temp Files | Removes temporary files | No |
-| Disable Xbox Services | Removes Xbox background processes | Yes |
-| Disable Search Indexing | Reduces CPU/disk usage | Yes |
-| Service Reducer | Disables unnecessary Windows services | Yes |
-| Registry Tweaks | Applies all .reg performance tweaks | No |
-| Lower Input Delay | Applies BCD boot tweaks via batch | No |
-
----
-
-## Notes
-
-- Some tweaks require a system restart to take full effect.
-- Disabling certain services may affect rarely used Windows features.
-- The bloatware remover permanently removes UWP apps including Microsoft Edge.
-
----
-
-## License
-
-MIT
+MIT — bkz. [LICENSE](LICENSE).

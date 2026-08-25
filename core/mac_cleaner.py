@@ -150,8 +150,6 @@ def is_safe_target(path: Path) -> bool:
 
     if p in PROTECTED:
         return False
-    if any(parent in PROTECTED and parent == p for parent in p.parents):
-        return False
 
     try:
         rel = p.relative_to(HOME)
@@ -281,7 +279,7 @@ def clean(
                 move_to_trash(item.path)
             freed += item.size
         except OSError as exc:
-            errors.append(f"{item.path.name}: atlandi")
+            errors.append(f"{item.path.name}: atlandi ({exc.strerror or exc})")
 
     return freed, errors
 

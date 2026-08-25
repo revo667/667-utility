@@ -6,12 +6,12 @@
         "Chrome": "Google.Chrome",
         "Brave": "BraveSoftware.BraveBrowser",
         "Epic Games": "EpicGames.EpicGamesLauncher",
-        "Team Speak": "TeamSpeakSystems.TeamSpeakClient "
+        "Team Speak": "TeamSpeakSystems.TeamSpeakClient"
     },
     "Development Apps": {
         "Visual Studio Code": "Microsoft.VisualStudioCode",
         "GitHub Desktop": "GitHub.GitHubDesktop",
-        "Python": "Python.Python.3.9",
+        "Python": "Python.Python.3.13",
         "PyCharm": "JetBrains.PyCharm",
         "GitHub": "GitHub.GitHub",
         "Git": "Git.Git",
@@ -20,7 +20,7 @@
     "Tools":{
         "Notepad++": "Notepad++.Notepad++",
         "7-Zip": "7-Zip.7-Zip",
-        "OBS" : "OBSProject.OBSStudio ",
+        "OBS" : "OBSProject.OBSStudio",
         "Lightshot": "Lightshot.Lightshot",
         "NVCleanstall": "TechPowerUp.NVCleanstall",
         "Process Lasso": "BitSum.ProcessLasso",

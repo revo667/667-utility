@@ -2,13 +2,26 @@ from dataclasses import replace
 
 from PySide6.QtCore import Qt, QThread, QTimer, Signal, Slot
 from PySide6.QtWidgets import (
-    QCheckBox, QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem,
-    QMessageBox, QProgressBar, QTextEdit, QVBoxLayout, QWidget,
+    QCheckBox,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QListWidgetItem,
+    QMessageBox,
+    QProgressBar,
+    QTextEdit,
+    QVBoxLayout,
+    QWidget,
 )
 
 from core.mac_cleaner import path_size
 from core.mac_uninstaller import (
-    MacAppEntry, UninstallPlan, build_plan, execute, list_installed_apps,
+    MacAppEntry,
+    UninstallPlan,
+    build_plan,
+    execute,
+    list_installed_apps,
 )
 from core.platform_utils import human_size
 from src.ui.views.modern_button import ModernButton
@@ -121,10 +134,10 @@ class MacUninstallerPage(QWidget):
         bottom = QHBoxLayout()
         self.status = QLabel("Uygulamalar taraniyor...")
         self.status.setWordWrap(True)
-        self.refresh_button = ModernButton("Yenile", variant="ghost")
+        self.refresh_button = ModernButton("Yenile", "ghost", "refresh")
         self.refresh_button.setFixedWidth(110)
         self.refresh_button.clicked.connect(self._start_scan)
-        self.uninstall_button = ModernButton("Kaldir", variant="danger")
+        self.uninstall_button = ModernButton("Kaldir", "danger", "uninstaller")
         self.uninstall_button.setFixedWidth(140)
         self.uninstall_button.setEnabled(False)
         self.uninstall_button.clicked.connect(self._start_uninstall)

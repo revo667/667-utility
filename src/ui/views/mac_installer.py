@@ -1,11 +1,22 @@
 from PySide6.QtCore import QThread, Signal, Slot
 from PySide6.QtWidgets import (
-    QHBoxLayout, QLabel, QLineEdit, QListWidget, QListWidgetItem,
-    QMessageBox, QProgressBar, QVBoxLayout, QWidget,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QListWidget,
+    QListWidgetItem,
+    QMessageBox,
+    QProgressBar,
+    QVBoxLayout,
+    QWidget,
 )
 
 from core.mac_installer import (
-    Package, install, install_instructions, is_available, search,
+    Package,
+    install,
+    install_instructions,
+    is_available,
+    search,
 )
 from src.ui.views.modern_button import ModernButton
 
@@ -64,7 +75,7 @@ class MacInstallerPage(QWidget):
         self.search_input = QLineEdit()
         self.search_input.setPlaceholderText("Paket ara (orn. firefox, ripgrep, iterm2)")
         self.search_input.returnPressed.connect(self._start_search)
-        self.search_button = ModernButton("Ara", variant="ghost")
+        self.search_button = ModernButton("Ara", "ghost", "search")
         self.search_button.setFixedWidth(110)
         self.search_button.clicked.connect(self._start_search)
         search_row.addWidget(self.search_input)
@@ -83,7 +94,7 @@ class MacInstallerPage(QWidget):
         bottom = QHBoxLayout()
         self.status = QLabel("Hazir.")
         self.status.setWordWrap(True)
-        self.install_button = ModernButton("Kur", variant="primary")
+        self.install_button = ModernButton("Kur", "primary", "installer")
         self.install_button.setFixedWidth(140)
         self.install_button.setEnabled(False)
         self.install_button.clicked.connect(self._start_install)

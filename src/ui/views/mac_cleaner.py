@@ -1,13 +1,25 @@
 from PySide6.QtCore import Qt, QThread, Signal, Slot
 from PySide6.QtWidgets import (
-    QFrame, QHBoxLayout, QLabel, QMessageBox, QProgressBar, QTreeWidget,
-    QTreeWidgetItem, QVBoxLayout, QWidget,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QMessageBox,
+    QProgressBar,
+    QTreeWidget,
+    QTreeWidgetItem,
+    QVBoxLayout,
+    QWidget,
 )
 
 from core.mac_cleaner import RULES, ScanResult, clean, scan_all
 from core.mac_permissions import check_access, open_privacy_settings, prompt_native_dialogs
+from core.mac_responsible import identify_responsible
 from core.platform_utils import human_size
-from src.ui.theme import Colors
+from src.ui import icons
+from src.ui.settings_store import settings
+from src.ui.style import repolish
+from src.ui.theme import Colors, Spacing
+from src.ui.toast import notify
 from src.ui.views.modern_button import ModernButton
 
 _ROLE_ITEM = Qt.UserRole + 1
@@ -52,8 +64,8 @@ class MacCleanerPage(QWidget):
     # ------------------------------------------------------------ arayuz
     def _build_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(24, 24, 24, 24)
-        layout.setSpacing(16)
+        layout.setContentsMargins(Spacing.XL, Spacing.XL, Spacing.XL, Spacing.XL)
+        layout.setSpacing(Spacing.MD)
 
         title = QLabel("Mac Cleaner")
         title.setObjectName("PageTitle")
@@ -65,23 +77,22 @@ class MacCleanerPage(QWidget):
         # izin serifi
         self.permission_bar = QFrame()
         self.permission_bar.setObjectName("PermissionBar")
-        self.permission_bar.setStyleSheet(f"""
-            QFrame#PermissionBar {{
-                background: {Colors.CARD};
-                border: 1px solid {Colors.BORDER};
-                border-radius: 12px;
-            }}
-        """)
         perm_layout = QHBoxLayout(self.permission_bar)
-        perm_layout.setContentsMargins(16, 12, 16, 12)
-        perm_layout.setSpacing(12)
+        perm_layout.setContentsMargins(Spacing.MD, Spacing.MD, Spacing.MD, Spacing.MD)
+        perm_layout.setSpacing(Spacing.MD)
+
+        self.permission_icon = QLabel()
+        self.permission_icon.setPixmap(icons.pixmap("shield", Colors.TEXT_MUTED, 18))
+        self.permission_icon.setFixedWidth(20)
 
         self.permission_label = QLabel("Izinler kontrol ediliyor...")
         self.permission_label.setWordWrap(True)
-        self.grant_button = ModernButton("Izin Ver", variant="ghost")
-        self.grant_button.setFixedWidth(120)
+
+        self.grant_button = ModernButton("Izin Ver", "ghost", "shield")
+        self.grant_button.setFixedWidth(130)
         self.grant_button.clicked.connect(self._request_access)
 
+        perm_layout.addWidget(self.permission_icon)
         perm_layout.addWidget(self.permission_label, stretch=1)
         perm_layout.addWidget(self.grant_button)
         layout.addWidget(self.permission_bar)
@@ -102,14 +113,15 @@ class MacCleanerPage(QWidget):
         # alt bar
         bottom = QHBoxLayout()
         self.summary_label = QLabel("Henuz tarama yapilmadi.")
-        self.summary_label.setStyleSheet(f"color: {Colors.TEXT_SECONDARY}; font-size: 13px;")
+        self.summary_label.setProperty("tone", "secondary")
+        self.summary_label.setWordWrap(True)
 
-        self.scan_button = ModernButton("Tara", variant="ghost")
+        self.scan_button = ModernButton("Tara", "ghost", "search")
         self.scan_button.setFixedWidth(120)
         self.scan_button.clicked.connect(self._start_scan)
 
-        self.clean_button = ModernButton("Cop Kutusuna Tasi", variant="primary")
-        self.clean_button.setFixedWidth(190)
+        self.clean_button = ModernButton("Cop Kutusuna Tasi", "primary", "cleaner")
+        self.clean_button.setFixedWidth(200)
         self.clean_button.setEnabled(False)
         self.clean_button.clicked.connect(self._start_clean)
 
@@ -122,23 +134,33 @@ class MacCleanerPage(QWidget):
     def _refresh_permissions(self):
         report = check_access()
         self.permission_label.setText(report.summary())
+
+        tone = "success" if report.is_sufficient else "warning"
+        self.permission_label.setProperty("tone", tone)
+        repolish(self.permission_label)
+
         color = Colors.SUCCESS if report.is_sufficient else Colors.WARNING
-        self.permission_label.setStyleSheet(f"color: {color}; font-size: 13px;")
+        self.permission_icon.setPixmap(icons.pixmap("shield", color, 18))
         self.grant_button.setVisible(not report.full_disk_access)
 
     @Slot()
     def _request_access(self):
         prompt_native_dialogs()
         self._refresh_permissions()
-        if not check_access().full_disk_access:
-            open_privacy_settings("full_disk")
-            QMessageBox.information(
-                self,
-                "Izin Gerekiyor",
-                "System Settings acildi.\n\n"
-                "Privacy & Security > Full Disk Access altindan bu uygulamayi ekleyip "
-                "isaretle, sonra uygulamayi yeniden baslat.",
-            )
+        if check_access().full_disk_access:
+            notify(self, "Full Disk Access verildi.", "success")
+            return
+
+        open_privacy_settings("full_disk")
+
+        # macOS izni, uygulamayi baslatan surece atar. Terminal'den calisiyorsak
+        # listede 'Python' degil 'Terminal' gorunur - kullaniciya dogru adi soyle.
+        responsible = identify_responsible()
+        QMessageBox.information(
+            self,
+            "Izin Gerekiyor",
+            "System Settings acildi.\n\n" + responsible.instructions(),
+        )
 
     # ------------------------------------------------------------ tarama
     @Slot()
@@ -166,6 +188,7 @@ class MacCleanerPage(QWidget):
         self.progress.hide()
         self.scan_button.setEnabled(True)
         self.summary_label.setText(f"Tarama basarisiz: {message}")
+        notify(self, f"Tarama basarisiz: {message}", "danger")
 
     @Slot(list)
     def _on_scan_finished(self, results):
@@ -235,16 +258,17 @@ class MacCleanerPage(QWidget):
             return
         total = sum(item.size for item in selected)
 
-        answer = QMessageBox.question(
-            self,
-            "Temizligi Onayla",
-            f"{len(selected)} oge cop kutusuna tasinacak ({human_size(total)}).\n\n"
-            "Cop kutusundan geri alabilirsin. Devam edilsin mi?",
-            QMessageBox.Yes | QMessageBox.No,
-            QMessageBox.No,
-        )
-        if answer != QMessageBox.Yes:
-            return
+        if settings.get("confirm_destructive"):
+            answer = QMessageBox.question(
+                self,
+                "Temizligi Onayla",
+                f"{len(selected)} oge cop kutusuna tasinacak ({human_size(total)}).\n\n"
+                "Cop kutusundan geri alabilirsin. Devam edilsin mi?",
+                QMessageBox.Yes | QMessageBox.No,
+                QMessageBox.No,
+            )
+            if answer != QMessageBox.Yes:
+                return
 
         self.clean_button.setEnabled(False)
         self.scan_button.setEnabled(False)
@@ -261,6 +285,7 @@ class MacCleanerPage(QWidget):
         if errors:
             message += f" {len(errors)} oge atlandi."
         self.summary_label.setText(message)
+        notify(self, message, "warning" if errors else "success")
         self.tree.clear()
         self._results = []
         self.clean_button.setEnabled(False)
