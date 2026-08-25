@@ -1,10 +1,29 @@
-# Python-generated files
+# Python
 __pycache__/
-*.py[oc]
+*.py[cod]
+*.egg-info/
 build/
 dist/
 wheels/
-*.egg-info
 
-# Virtual environments
-.venv
+# Sanal ortamlar
+.venv/
+venv/
+env/
+
+# Arac onbellekleri
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Isletim sistemi
+.DS_Store
+Thumbs.db
+
+# Uygulama ciktilari
+*.log

@@ -1,8 +1,8 @@
-import subprocess
 import shutil
-from typing import Tuple
+import subprocess
 
-def install_by_winget_id(winget_id: str) -> Tuple[int, str]:
+
+def install_by_winget_id(winget_id: str) -> tuple[int, str]:
     if not shutil.which("winget"):
         return -1, "winget not found on PATH."
 
@@ -31,7 +31,7 @@ def install_by_winget_id(winget_id: str) -> Tuple[int, str]:
         return -4, f"Unexpected error: {e}"
 
 
-def install_multiple(winget_ids: list[str]) -> list[Tuple[str, int, str]]:
+def install_multiple(winget_ids: list[str]) -> list[tuple[str, int, str]]:
     results = []
     for winget_id in winget_ids:
         code, out = install_by_winget_id(winget_id)

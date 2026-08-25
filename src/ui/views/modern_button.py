@@ -1,84 +1,68 @@
-from PySide6.QtWidgets import QPushButton
+"""Uygulama genelindeki buton.
+
+Gorunum artik burada degil, style.py'de - bu sinif sadece 'variant'
+property'sini set eder ve QSS geri kalanini halleder.
+"""
+
+from __future__ import annotations
+
 from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QPushButton
+
+from src.ui import icons
+from src.ui.style import repolish
+from src.ui.theme import Colors
+
+_ICON_TINT = {
+    "primary": "#FFFFFF",
+    "ghost": Colors.TEXT_SECONDARY,
+    "danger": Colors.DANGER,
+    "subtle": Colors.TEXT_MUTED,
+}
 
 
 class ModernButton(QPushButton):
-    def __init__(self, text, variant="primary", parent=None):
+    def __init__(self, text: str = "", variant: str = "primary",
+                 icon_name: str | None = None, parent=None):
         super().__init__(text, parent)
-        self.variant = variant
-        self._apply_style()
+        self._variant = variant
+        self._icon_name = icon_name
         self.setCursor(Qt.PointingHandCursor)
-        self.setFixedHeight(38)
+        self.setProperty("variant", variant)
+        self._apply_icon()
 
-    def _apply_style(self):
-        if self.variant == "primary":
-            self.setStyleSheet("""
-                QPushButton {
-                    background: qlineargradient(
-                        x1:0, y1:0, x2:1, y2:0,
-                        stop:0 #A855F7,
-                        stop:1 #7C3AED
-                    );
-                    color: white;
-                    border: none;
-                    border-radius: 9px;
-                    padding: 0 20px;
-                    font-weight: 600;
-                    font-size: 13px;
-                }
-                QPushButton:hover {
-                    background: qlineargradient(
-                        x1:0, y1:0, x2:1, y2:0,
-                        stop:0 #C084FC,
-                        stop:1 #A855F7
-                    );
-                }
-                QPushButton:pressed {
-                    background: qlineargradient(
-                        x1:0, y1:0, x2:1, y2:0,
-                        stop:0 #7C3AED,
-                        stop:1 #6D28D9
-                    );
-                }
-            """)
+    # ------------------------------------------------------------- variant
+    @property
+    def variant(self) -> str:
+        return self._variant
 
-        elif self.variant == "danger":
-            self.setStyleSheet("""
-                QPushButton {
-                    background: transparent;
-                    color: #F87171;
-                    border: 1px solid rgba(248, 113, 113, 0.5);
-                    border-radius: 9px;
-                    padding: 0 20px;
-                    font-weight: 600;
-                    font-size: 13px;
-                }
-                QPushButton:hover {
-                    background: rgba(248, 113, 113, 0.1);
-                    border: 1px solid rgba(248, 113, 113, 0.8);
-                    color: #FCA5A5;
-                }
-                QPushButton:pressed {
-                    background: rgba(248, 113, 113, 0.2);
-                }
-            """)
+    def set_variant(self, variant: str) -> None:
+        if variant == self._variant:
+            return
+        self._variant = variant
+        self.setProperty("variant", variant)
+        self._apply_icon()
+        repolish(self)
 
-        elif self.variant == "ghost":
-            self.setStyleSheet("""
-                QPushButton {
-                    background: transparent;
-                    color: rgba(180, 160, 220, 0.7);
-                    border: 1px solid rgba(167, 139, 250, 0.18);
-                    border-radius: 9px;
-                    padding: 0 20px;
-                    font-size: 13px;
-                }
-                QPushButton:hover {
-                    background: rgba(168, 85, 247, 0.1);
-                    color: #F0E8FF;
-                    border: 1px solid rgba(168, 85, 247, 0.4);
-                }
-                QPushButton:pressed {
-                    background: rgba(168, 85, 247, 0.18);
-                }
-            """)
+    # ---------------------------------------------------------------- icon
+    def set_icon_name(self, name: str | None) -> None:
+        self._icon_name = name
+        self._apply_icon()
+
+    def _apply_icon(self) -> None:
+        if not self._icon_name:
+            return
+        tint = _ICON_TINT.get(self._variant, Colors.TEXT_SECONDARY)
+        self.setIcon(icons.icon(self._icon_name, tint, 16))
+
+
+class IconButton(ModernButton):
+    """Sadece ikon tasiyan kare buton - pencere kontrolleri ve satir eylemleri."""
+
+    def __init__(self, icon_name: str, variant: str = "subtle",
+                 tooltip: str = "", size: int = 16, parent=None):
+        super().__init__("", variant, icon_name, parent)
+        self.setFixedSize(34, 34)
+        if tooltip:
+            self.setToolTip(tooltip)
+        self.setIcon(icons.icon(icon_name, _ICON_TINT.get(variant, Colors.TEXT_MUTED), size))

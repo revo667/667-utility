@@ -26,7 +26,7 @@ def search_first_package_id(query: str) -> tuple[bool, str]:
         stdout = _clean(proc.stdout or "")
         stderr = _clean(proc.stderr or "")
         content = (stdout + "\n" + stderr).strip()
-        lines = [l for l in content.splitlines() if l.strip()]
+        lines = [line for line in content.splitlines() if line.strip()]
         if not lines:
             return False, "Result not find"
         header_idx = None

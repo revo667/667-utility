@@ -1,5 +1,5 @@
 from __future__ import annotations
-import subprocess
+
 import os
 import shutil
 import subprocess
@@ -154,11 +154,6 @@ def install(package: Package) -> tuple[bool, str]:
     if code == 0:
         return True, f"{package.token} kuruldu."
     return False, output or f"Kurulum basarisiz (kod {code})."
-
-
-@lru_cache(maxsize=1)
-def _installed_cache_key() -> int:
-    return 0
 
 
 def installed_casks() -> set[str]:

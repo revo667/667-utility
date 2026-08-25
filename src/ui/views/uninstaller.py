@@ -1,20 +1,29 @@
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-                                QScrollArea, QFrame, QLineEdit)
+from __future__ import annotations
+
 from PySide6.QtCore import QThread, Signal
+from PySide6.QtWidgets import (
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QMessageBox,
+    QScrollArea,
+    QVBoxLayout,
+    QWidget,
+)
+
+from core.platform_utils import IS_WINDOWS
+from core.uninstaller import get_installed_programs, remove_bloatware, uninstall_program
+from src.ui.settings_store import settings
+from src.ui.theme import Spacing
+from src.ui.toast import notify
 from src.ui.views.modern_button import ModernButton
-from src.ui.theme import Colors
-from core.uninstaller import get_installed_programs, uninstall_program, remove_bloatware
 
-import sys
-
-if sys.platform == "win32":
-    import winreg
-
-else:
-    winreg = None
 
 class WorkerThread(QThread):
-    finished = Signal(bool)
+    """Sinyal adi 'done': QThread'in kendi 'finished' sinyalini golgelememesi icin."""
+
+    done = Signal(bool, str)
 
     def __init__(self, fn, *args):
         super().__init__()
@@ -24,10 +33,9 @@ class WorkerThread(QThread):
     def run(self):
         try:
             result = self.fn(*self.args)
-            self.finished.emit(bool(result))
-        except Exception as e:
-            print(f"Error: {e}")
-            self.finished.emit(False)
+            self.done.emit(bool(result), "")
+        except Exception as exc:
+            self.done.emit(False, str(exc))
 
 
 class ProgramRow(QFrame):
@@ -35,18 +43,18 @@ class ProgramRow(QFrame):
         super().__init__(parent)
         self.name = name
         self.uninstall_str = uninstall_str
+        self.setObjectName("AppRow")
         self._build_ui()
-        self._apply_style()
 
     def _build_ui(self):
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(16, 10, 16, 10)
+        layout.setContentsMargins(Spacing.MD, Spacing.SM, Spacing.MD, Spacing.SM)
 
         name_label = QLabel(self.name)
-        name_label.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; font-size: 13px;")
+        name_label.setObjectName("ItemTitle")
 
-        self.btn = ModernButton("Uninstall", variant="danger")
-        self.btn.setFixedWidth(100)
+        self.btn = ModernButton("Kaldir", "danger", "uninstaller")
+        self.btn.setFixedWidth(120)
         self.btn.clicked.connect(self._on_uninstall)
 
         layout.addWidget(name_label, stretch=1)
@@ -54,29 +62,20 @@ class ProgramRow(QFrame):
 
     def _on_uninstall(self):
         self.btn.setEnabled(False)
-        self.btn.setText("Removing...")
+        self.btn.setText("Kaldiriliyor...")
         self.worker = WorkerThread(uninstall_program, self.uninstall_str)
-        self.worker.finished.connect(self._on_done)
+        self.worker.done.connect(self._on_done)
         self.worker.start()
 
-    def _on_done(self, success):
+    def _on_done(self, success, error):
         if success:
-            self.btn.setText("Done")
+            self.btn.setText("Kaldirildi")
+            self.btn.set_variant("subtle")
+            notify(self, f"{self.name} kaldirildi.", "success")
         else:
             self.btn.setEnabled(True)
-            self.btn.setText("Failed")
-
-    def _apply_style(self):
-        self.setStyleSheet(f"""
-            QFrame {{
-                background-color: {Colors.BG_2};
-                border: 1px solid {Colors.BORDER};
-                border-radius: 8px;
-            }}
-            QFrame:hover {{
-                border: 1px solid {Colors.ACCENT};
-            }}
-        """)
+            self.btn.setText("Basarisiz")
+            notify(self, f"{self.name} kaldirilamadi. {error}".strip(), "danger")
 
 
 class UninstallerView(QWidget):
@@ -90,60 +89,47 @@ class UninstallerView(QWidget):
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(32, 32, 32, 32)
-        layout.setSpacing(16)
+        layout.setContentsMargins(Spacing.XL, Spacing.XL, Spacing.XL, Spacing.XL)
+        layout.setSpacing(Spacing.MD)
 
-        # Başlık
         title = QLabel("Uninstall Tool")
         title.setObjectName("PageTitle")
-        subtitle = QLabel("Uninstall selected programs from your computer")
+        subtitle = QLabel("Kurulu programlari kaldir veya Windows bloatware'ini temizle.")
         subtitle.setObjectName("PageSubtitle")
         layout.addWidget(title)
         layout.addWidget(subtitle)
 
-        # Bloatware butonu
-        self.bloat_btn = ModernButton("Remove Windows Bloatware", variant="danger")
-        self.bloat_btn.setFixedHeight(44)
+        self.bloat_btn = ModernButton("Windows Bloatware'ini Kaldir", "danger", "cleaner")
+        self.bloat_btn.setFixedHeight(42)
         self.bloat_btn.clicked.connect(self._on_remove_bloatware)
         layout.addWidget(self.bloat_btn)
 
-        # Arama
         self.search = QLineEdit()
-        self.search.setPlaceholderText("Search programs...")
-        self.search.setStyleSheet(f"""
-            QLineEdit {{
-                background: {Colors.BG_2};
-                border: 1px solid {Colors.BORDER};
-                border-radius: 8px;
-                padding: 8px 12px;
-                color: {Colors.TEXT_PRIMARY};
-                font-size: 13px;
-            }}
-            QLineEdit:focus {{
-                border: 1px solid {Colors.ACCENT};
-            }}
-        """)
+        self.search.setPlaceholderText("Program ara...")
         self.search.textChanged.connect(self._filter)
         layout.addWidget(self.search)
 
-        # Liste
+        self.count_label = QLabel("")
+        self.count_label.setObjectName("ItemMeta")
+        layout.addWidget(self.count_label)
+
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setFrameShape(QFrame.NoFrame)
-        scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
 
         self.list_widget = QWidget()
-        self.list_widget.setStyleSheet("background: transparent;")
         self.list_layout = QVBoxLayout(self.list_widget)
-        self.list_layout.setSpacing(6)
-        self.list_layout.setContentsMargins(0, 0, 0, 0)
+        self.list_layout.setSpacing(Spacing.XS)
+        self.list_layout.setContentsMargins(0, 0, Spacing.SM, 0)
 
         scroll.setWidget(self.list_widget)
-        layout.addWidget(scroll)
+        layout.addWidget(scroll, stretch=1)
 
     def _load_programs(self):
-        if winreg is None:
-            print("This feature is only available on Windows.")
+        if not IS_WINDOWS:
+            self.count_label.setText("Bu ozellik yalnizca Windows'ta kullanilabilir.")
+            self.bloat_btn.setEnabled(False)
+            self.search.setEnabled(False)
             return
         self.all_programs = get_installed_programs()
         self._render(self.all_programs)
@@ -162,6 +148,7 @@ class UninstallerView(QWidget):
             self.rows.append(row)
 
         self.list_layout.addStretch()
+        self.count_label.setText(f"{len(programs)} program listeleniyor")
 
     def _filter(self, text):
         filtered = [p for p in self.all_programs
@@ -169,14 +156,32 @@ class UninstallerView(QWidget):
         self._render(filtered)
 
     def _on_remove_bloatware(self):
-        if winreg is None:
-            print("This feature is only available on Windows.")
+        if not IS_WINDOWS:
             return
+
+        if settings.get("confirm_destructive"):
+            answer = QMessageBox.question(
+                self, "Bloatware Kaldirilacak",
+                "Onceden tanimli Microsoft UWP uygulamalari kaldirilacak "
+                "(Xbox, Haritalar, Haberler, Zune vb.).\n\n"
+                "Bunlari sonradan Microsoft Store uzerinden geri kurabilirsin.\n\n"
+                "Devam edilsin mi?",
+                QMessageBox.Yes | QMessageBox.No, QMessageBox.No,
+            )
+            if answer != QMessageBox.Yes:
+                return
+
         self.bloat_btn.setEnabled(False)
-        self.bloat_btn.setText("Removing bloatware...")
+        self.bloat_btn.setText("Kaldiriliyor...")
         self.worker = WorkerThread(remove_bloatware)
-        self.worker.finished.connect(self._on_bloat_done)
+        self.worker.done.connect(self._on_bloat_done)
         self.worker.start()
 
-    def _on_bloat_done(self, success):
-        self.bloat_btn.setText("Done!" if success else "Failed")
+    def _on_bloat_done(self, success, error):
+        self.bloat_btn.setEnabled(True)
+        self.bloat_btn.setText("Windows Bloatware'ini Kaldir")
+        notify(
+            self,
+            "Bloatware temizlendi." if success else f"Temizlik basarisiz. {error}".strip(),
+            "success" if success else "danger",
+        )

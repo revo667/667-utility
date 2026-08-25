@@ -74,7 +74,9 @@ def data_volume() -> str:
         return "/"
 
     if IS_WINDOWS:
-        return os.environ.get("SystemDrive", "C:") + "\\"
+        # Windows bunu "SystemDrive" olarak tanimlar; buyuk harfli varyant yedek.
+        drive = os.environ.get("SystemDrive") or os.environ.get("SYSTEMDRIVE") or "C:"  # noqa: SIM112
+        return drive + "\\"
 
     return "/"
 

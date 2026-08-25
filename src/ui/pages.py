@@ -1,10 +1,17 @@
+"""Sayfa kayit defteri.
+
+Platform tespiti artik core.platform_utils'ten geliyor - burada ikinci bir
+kopyasi vardi, ikisi ayri ayri bakim istiyordu.
+"""
+
 from __future__ import annotations
 
-import sys
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
 
 from PySide6.QtWidgets import QWidget
+
+from core.platform_utils import IS_LINUX, IS_MACOS, IS_WINDOWS
 
 WINDOWS = "win32"
 MACOS = "darwin"
@@ -13,13 +20,13 @@ ALL_PLATFORMS = frozenset({WINDOWS, MACOS, LINUX})
 
 
 def current_platform() -> str:
-    if sys.platform == "win32":
+    if IS_WINDOWS:
         return WINDOWS
-    if sys.platform == "darwin":
+    if IS_MACOS:
         return MACOS
-    if sys.platform.startswith("linux"):
+    if IS_LINUX:
         return LINUX
-    return sys.platform
+    return "unknown"
 
 
 @dataclass(frozen=True)
@@ -27,11 +34,17 @@ class PageSpec:
     key: str
     label: str
     factory: Callable[[], QWidget]
+    icon: str = "dashboard"
+    section: str = "ARACLAR"
     platforms: frozenset[str] = ALL_PLATFORMS
 
     def is_available(self) -> bool:
         return current_platform() in self.platforms
 
+
+# --------------------------------------------------------------- fabrikalar
+# Import'lar bilerek fonksiyon icinde: acilista tum sayfalari yuklemek
+# gereksiz, kullanici hic acmayacagi sayfanin bagimliliklarini bekliyor.
 
 def _dashboard() -> QWidget:
     from src.ui.views.dashboard import DashboardView
@@ -68,51 +81,42 @@ def _mac_uninstaller() -> QWidget:
     return MacUninstallerPage()
 
 
+def _mac_snapshots() -> QWidget:
+    from src.ui.views.mac_snapshots import MacSnapshotsPage
+    return MacSnapshotsPage()
+
+
+def _settings() -> QWidget:
+    from src.ui.views.settings import SettingsPage
+    return SettingsPage()
+
+
 PAGES: tuple[PageSpec, ...] = (
-    PageSpec(
-        key="dashboard",
-        label="Dashboard",
-        factory=_dashboard,
-        platforms=ALL_PLATFORMS,
-    ),
-    PageSpec(
-        key="optimizer",
-        label="Optimizer",
-        factory=_optimizer,
-        platforms=frozenset({WINDOWS}),
-    ),
-    PageSpec(
-        key="installer",
-        label="Installer",
-        factory=_installer,
-        platforms=frozenset({WINDOWS, LINUX}),
-    ),
-    PageSpec(
-        key="uninstaller",
-        label="Uninstaller",
-        factory=_uninstaller,
-        platforms=frozenset({WINDOWS}),
-    ),
-    PageSpec(
-        key="mac_installer",
-        label="Installer",
-        factory=_mac_installer,
-        platforms=frozenset({MACOS}),
-    ),
-    PageSpec(
-        key="mac_uninstaller",
-        label="Uninstaller",
-        factory=_mac_uninstaller,
-        platforms=frozenset({MACOS}),
-    ),
-    PageSpec(
-        key="mac_cleaner",
-        label="Cleaner",
-        factory=_mac_cleaner,
-        platforms=frozenset({MACOS}),
-    ),
+    PageSpec("dashboard", "Dashboard", _dashboard, "dashboard", "GENEL"),
+
+    PageSpec("optimizer", "Optimizer", _optimizer, "optimizer", "ARACLAR",
+             frozenset({WINDOWS})),
+    PageSpec("installer", "Installer", _installer, "installer", "ARACLAR",
+             frozenset({WINDOWS, LINUX})),
+    PageSpec("uninstaller", "Uninstaller", _uninstaller, "uninstaller", "ARACLAR",
+             frozenset({WINDOWS})),
+
+    PageSpec("mac_installer", "Installer", _mac_installer, "installer", "ARACLAR",
+             frozenset({MACOS})),
+    PageSpec("mac_uninstaller", "Uninstaller", _mac_uninstaller, "uninstaller", "ARACLAR",
+             frozenset({MACOS})),
+    PageSpec("mac_cleaner", "Cleaner", _mac_cleaner, "cleaner", "ARACLAR",
+             frozenset({MACOS})),
+    PageSpec("mac_snapshots", "Snapshots", _mac_snapshots, "snapshots", "ARACLAR",
+             frozenset({MACOS})),
+
+    PageSpec("settings", "Ayarlar", _settings, "settings", "SISTEM"),
 )
 
 
 def available_pages() -> list[PageSpec]:
     return [spec for spec in PAGES if spec.is_available()]
+
+
+def page_by_key(key: str) -> PageSpec | None:
+    return next((spec for spec in PAGES if spec.key == key), None)

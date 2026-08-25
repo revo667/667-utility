@@ -1,26 +1,55 @@
-import ctypes
+"""667 Utility giris noktasi.
+
+Windows'ta bazi tweak'ler yonetici hakki ister; uygulama kendini yukseltilmis
+olarak yeniden baslatir. Diger platformlarda boyle bir adim yok.
+"""
+
+from __future__ import annotations
+
 import sys
 import warnings
-from src.ui.app import run_app
-from core.setup import install_font
 
-install_font()
+from core.platform_utils import IS_WINDOWS
 
+# PySide6'nin bazi surumleri kapanista zararsiz RuntimeWarning basiyor.
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
-def is_admin():
-    if sys.platform != "win32":
+
+def is_admin() -> bool:
+    if not IS_WINDOWS:
         return True
     try:
-        return ctypes.windll.shell32.IsUserAnAdmin()
-    except Exception:
+        import ctypes
+        return bool(ctypes.windll.shell32.IsUserAnAdmin())
+    except (AttributeError, OSError):
         return False
 
-if __name__ == "__main__":
-    if not is_admin():
-        ctypes.windll.shell32.ShellExecuteW(
+
+def relaunch_as_admin() -> bool:
+    """UAC istemi gosterir. Kullanici reddederse False doner."""
+    if not IS_WINDOWS:
+        return False
+    try:
+        import ctypes
+        result = ctypes.windll.shell32.ShellExecuteW(
             None, "runas", sys.executable, f'"{sys.argv[0]}"', None, 1
         )
-        sys.exit()
-    else:
-        run_app()
+        # ShellExecuteW 32'den buyuk deger dondurunce basarili sayilir.
+        return int(result) > 32
+    except (AttributeError, OSError):
+        return False
+
+
+def main() -> int:
+    if not is_admin():
+        if relaunch_as_admin():
+            return 0
+        print("Yonetici hakki alinamadi - sinirli modda devam ediliyor.")
+
+    from src.ui.app import run_app
+    run_app()
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

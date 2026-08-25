@@ -1,17 +1,29 @@
 import json
 import os
-from PySide6.QtWidgets import (QWidget, QVBoxLayout, QLabel, QLineEdit,
-                                QHBoxLayout, QScrollArea, QFrame,
-                                QCheckBox, QTabBar, QStackedWidget)
+
 from PySide6.QtCore import QThread, Signal
+from PySide6.QtWidgets import (
+    QCheckBox,
+    QFrame,
+    QHBoxLayout,
+    QLabel,
+    QLineEdit,
+    QScrollArea,
+    QStackedWidget,
+    QTabBar,
+    QVBoxLayout,
+    QWidget,
+)
+
+from src.ui.theme import Spacing
+from src.ui.toast import notify
 from src.ui.views.modern_button import ModernButton
-from src.ui.theme import Colors
 
 
 def load_apps() -> dict:
     path = os.path.join(os.path.dirname(__file__), "..", "..", "apps.json")
     try:
-        with open(os.path.abspath(path), "r", encoding="utf-8") as f:
+        with open(os.path.abspath(path), encoding="utf-8") as f:
             return json.load(f)
     except Exception as e:
         print(f"apps.json yüklenemedi: {e}")
@@ -62,33 +74,21 @@ class AppCheckBox(QFrame):
     def __init__(self, name: str, winget_id: str, parent=None):
         super().__init__(parent)
         self.winget_id = winget_id
+        self.setObjectName("AppRow")
         self._build_ui(name, winget_id)
-        self._apply_style()
 
     def _build_ui(self, name, winget_id):
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(14, 10, 14, 10)
+        layout.setContentsMargins(Spacing.MD, Spacing.SM, Spacing.MD, Spacing.SM)
 
         self.checkbox = QCheckBox()
-        self.checkbox.setStyleSheet(f"""
-            QCheckBox::indicator {{
-                width: 18px;
-                height: 18px;
-                border-radius: 5px;
-                border: 1px solid {Colors.BORDER};
-                background: transparent;
-            }}
-            QCheckBox::indicator:checked {{
-                background: {Colors.ACCENT};
-                border: 1px solid {Colors.ACCENT};
-            }}
-        """)
 
         name_label = QLabel(name)
-        name_label.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; font-size: 13px;")
+        name_label.setObjectName("ItemTitle")
 
         id_label = QLabel(winget_id)
-        id_label.setStyleSheet(f"color: {Colors.TEXT_SECONDARY}; font-size: 11px;")
+        id_label.setObjectName("ItemMeta")
+        id_label.setProperty("mono", "true")
 
         text_layout = QVBoxLayout()
         text_layout.setSpacing(2)
@@ -101,17 +101,8 @@ class AppCheckBox(QFrame):
     def is_checked(self) -> bool:
         return self.checkbox.isChecked()
 
-    def _apply_style(self):
-        self.setStyleSheet(f"""
-            QFrame {{
-                background: {Colors.BG_2};
-                border: 1px solid {Colors.BORDER};
-                border-radius: 8px;
-            }}
-            QFrame:hover {{
-                border: 1px solid {Colors.ACCENT};
-            }}
-        """)
+    def set_checked(self, value: bool) -> None:
+        self.checkbox.setChecked(value)
 
 
 class CategoryTab(QWidget):
@@ -147,13 +138,13 @@ class InstallerView(QWidget):
 
     def _build_ui(self):
         layout = QVBoxLayout(self)
-        layout.setContentsMargins(32, 32, 32, 32)
-        layout.setSpacing(16)
+        layout.setContentsMargins(Spacing.XL, Spacing.XL, Spacing.XL, Spacing.XL)
+        layout.setSpacing(Spacing.MD)
 
         # Başlık
         title = QLabel("Install Apps")
         title.setObjectName("PageTitle")
-        subtitle = QLabel("Select apps to install via winget")
+        subtitle = QLabel("winget uzerinden uygulama kur.")
         subtitle.setObjectName("PageSubtitle")
         layout.addWidget(title)
         layout.addWidget(subtitle)
@@ -161,9 +152,9 @@ class InstallerView(QWidget):
         # Arama
         search_row = QHBoxLayout()
         self.search_input = QLineEdit()
-        self.search_input.setPlaceholderText("Search winget packages (e.g. 7zip, chrome)...")
-        self.search_btn = ModernButton("Search", variant="ghost")
-        self.search_btn.setFixedWidth(90)
+        self.search_input.setPlaceholderText("winget paketi ara (orn. 7zip, chrome)")
+        self.search_btn = ModernButton("Ara", "ghost", "search")
+        self.search_btn.setFixedWidth(110)
         self.search_btn.clicked.connect(self._handle_search)
         search_row.addWidget(self.search_input)
         search_row.addWidget(self.search_btn)
@@ -171,28 +162,11 @@ class InstallerView(QWidget):
 
         # Arama sonucu
         self.search_result = QLabel("")
-        self.search_result.setStyleSheet(f"color: {Colors.TEXT_SECONDARY}; font-size: 12px;")
+        self.search_result.setObjectName("ItemMeta")
         layout.addWidget(self.search_result)
 
         # Kategorili tab bar
         self.tab_bar = QTabBar()
-        self.tab_bar.setStyleSheet(f"""
-            QTabBar::tab {{
-                background: transparent;
-                color: {Colors.TEXT_SECONDARY};
-                padding: 8px 18px;
-                border: none;
-                font-size: 13px;
-                border-bottom: 2px solid transparent;
-            }}
-            QTabBar::tab:selected {{
-                color: {Colors.ACCENT};
-                border-bottom: 2px solid {Colors.ACCENT};
-            }}
-            QTabBar::tab:hover {{
-                color: {Colors.TEXT_PRIMARY};
-            }}
-        """)
         self.tab_bar.currentChanged.connect(self._on_tab_changed)
         layout.addWidget(self.tab_bar)
 
@@ -205,10 +179,8 @@ class InstallerView(QWidget):
             scroll = QScrollArea()
             scroll.setWidgetResizable(True)
             scroll.setFrameShape(QFrame.NoFrame)
-            scroll.setStyleSheet("QScrollArea { background: transparent; border: none; }")
 
             tab = CategoryTab(apps)
-            tab.setStyleSheet("background: transparent;")
             scroll.setWidget(tab)
             self.category_tabs.append(tab)
             self.stack.addWidget(scroll)
@@ -218,10 +190,10 @@ class InstallerView(QWidget):
         # Alt butonlar
         bottom = QHBoxLayout()
         self.status_label = QLabel("")
-        self.status_label.setStyleSheet(f"color: {Colors.TEXT_SECONDARY}; font-size: 12px;")
+        self.status_label.setObjectName("ItemMeta")
 
-        self.install_btn = ModernButton("Install Selected", variant="primary")
-        self.install_btn.setFixedWidth(150)
+        self.install_btn = ModernButton("Secilenleri Kur", "primary", "installer")
+        self.install_btn.setFixedWidth(180)
         self.install_btn.clicked.connect(self._handle_install)
 
         bottom.addWidget(self.status_label, stretch=1)
@@ -236,11 +208,11 @@ class InstallerView(QWidget):
         selected = current_tab.get_selected()
 
         if not selected:
-            self.status_label.setText("No apps selected.")
+            self.status_label.setText("Hicbir uygulama secilmedi.")
             return
 
         self.install_btn.setEnabled(False)
-        self.install_btn.setText("Installing...")
+        self.install_btn.setText("Kuruluyor...")
         self.status_label.setText(f"Starting installation of {len(selected)} app(s)...")
 
         self.worker = InstallWorker(selected)
@@ -250,15 +222,16 @@ class InstallerView(QWidget):
 
     def _on_install_done(self, success, message):
         self.install_btn.setEnabled(True)
-        self.install_btn.setText("Install Selected")
+        self.install_btn.setText("Secilenleri Kur")
         self.status_label.setText(message)
+        notify(self, message, "success" if success else "danger")
 
     def _handle_search(self):
         query = self.search_input.text().strip()
         if not query:
             return
         self.search_btn.setEnabled(False)
-        self.search_result.setText(f"Searching for '{query}'...")
+        self.search_result.setText(f"Araniyor: {query} ...")
         self.search_worker = SearchWorker(query)
         self.search_worker.result.connect(self._on_search_done)
         self.search_worker.start()
@@ -266,6 +239,6 @@ class InstallerView(QWidget):
     def _on_search_done(self, ok, result):
         self.search_btn.setEnabled(True)
         if ok:
-            self.search_result.setText(f"Found: {result} — you can install it directly via winget.")
+            self.search_result.setText(f"Bulundu: {result}")
         else:
-            self.search_result.setText("Not found.")
+            self.search_result.setText("Sonuc bulunamadi.")

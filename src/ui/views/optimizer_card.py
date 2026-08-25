@@ -1,118 +1,134 @@
-from PySide6.QtWidgets import QFrame, QHBoxLayout, QVBoxLayout, QLabel
+"""Tek bir tweak'i temsil eden kart."""
+
+from __future__ import annotations
+
+from collections.abc import Callable
+
 from PySide6.QtCore import QThread, Signal
+from PySide6.QtWidgets import QFrame, QHBoxLayout, QLabel, QVBoxLayout
+
+from src.ui.style import repolish
+from src.ui.theme import Spacing
+from src.ui.toast import notify
 from src.ui.views.modern_button import ModernButton
-from src.ui.theme import Colors
-from typing import Callable
 
 
 class OptimizerWork(QThread):
-    finished = Signal(bool)
+    """Tweak'i arka planda calistirir.
 
-    def __init__(self, callback):
-        super().__init__()
-        self.callback = callback
+    Sinyal adi bilerek 'done': QThread'in kendi 'finished' sinyali var, ayni
+    isimle yeni bir Signal tanimlamak onu golgeliyor ve is bitis takibini bozuyordu.
+    """
+
+    done = Signal(bool, str)
+
+    def __init__(self, callback: Callable, parent=None):
+        super().__init__(parent)
+        self._callback = callback
 
     def run(self):
         try:
-            result = self.callback()
-            self.finished.emit(True if result is None else bool(result))
-        except Exception as e:
-            print(f"Error: {e}")
-            self.finished.emit(False)
+            result = self._callback()
+            # Geri alma fonksiyonlarinin bir kismi None donuyor - None'i basari say.
+            self.done.emit(True if result is None else bool(result), "")
+        except Exception as exc:
+            self.done.emit(False, str(exc))
 
 
 class OptimizerCard(QFrame):
-    def __init__(self, title, description, status="safe",
+    #: Kart durumu degistiginde sayfa toplam sayaci guncelleyebilsin diye.
+    state_changed = Signal(bool)
+
+    def __init__(self, title: str, description: str, status: str = "safe",
                  callback: Callable | None = None,
                  undo_callback: Callable | None = None,
                  parent=None):
         super().__init__(parent)
         self.setObjectName("OptimizerCard")
+
+        self.title = title
         self.callback = callback
         self.undo_callback = undo_callback
+        self.status = status
         self.is_applied = False
+        self._worker: OptimizerWork | None = None
+
         self._build_ui(title, description, status)
-        self._apply_style()
 
-    def _build_ui(self, title, description, status):
+    def _build_ui(self, title: str, description: str, status: str):
         layout = QHBoxLayout(self)
-        layout.setContentsMargins(20, 16, 20, 16)
-        layout.setSpacing(16)
+        layout.setContentsMargins(Spacing.LG, Spacing.MD, Spacing.LG, Spacing.MD)
+        layout.setSpacing(Spacing.MD)
 
-        indicator = QFrame()
-        indicator.setFixedWidth(3)
-        indicator.setFixedHeight(40)
-        if status == "safe":
-            indicator.setStyleSheet("background: rgba(168, 85, 247, 0.8); border-radius: 1px;")
-        elif status == "warning":
-            indicator.setStyleSheet("background: rgba(251, 191, 36, 0.8); border-radius: 1px;")
-        else:
-            indicator.setStyleSheet("background: rgba(248, 113, 113, 0.8); border-radius: 1px;")
+        stripe = QFrame()
+        stripe.setObjectName("RiskStripe")
+        stripe.setProperty("risk", status)
+        stripe.setFixedWidth(3)
+        stripe.setMinimumHeight(38)
 
-        text_layout = QVBoxLayout()
-        text_layout.setSpacing(4)
+        text = QVBoxLayout()
+        text.setSpacing(3)
 
         title_label = QLabel(title)
-        title_label.setStyleSheet(f"color: {Colors.TEXT_PRIMARY}; font-weight: 600; font-size: 14px;")
+        title_label.setObjectName("ItemTitle")
 
         desc_label = QLabel(description)
-        desc_label.setStyleSheet(f"color: {Colors.TEXT_SECONDARY}; font-size: 12px;")
+        desc_label.setObjectName("ItemMeta")
         desc_label.setWordWrap(True)
 
-        text_layout.addWidget(title_label)
-        text_layout.addWidget(desc_label)
+        text.addWidget(title_label)
+        text.addWidget(desc_label)
 
-        btn_text = "Apply" if status != "danger" else "Apply Risk"
-        btn_variant = "primary" if status == "safe" else "danger"
-        self.action_btn = ModernButton(btn_text, variant=btn_variant)
-        self.action_btn.setFixedWidth(110)
-        self.action_btn.clicked.connect(self._on_click)
+        self.action_btn = ModernButton(
+            "Uygula", "primary" if status == "safe" else "danger"
+        )
+        self.action_btn.setFixedWidth(120)
+        self.action_btn.clicked.connect(self.trigger)
 
-        layout.addWidget(indicator)
-        layout.addLayout(text_layout, stretch=1)
+        layout.addWidget(stripe)
+        layout.addLayout(text, stretch=1)
         layout.addWidget(self.action_btn)
 
-    def _on_click(self):
-        if not self.is_applied:
-            if self.callback:
-                self.worker = OptimizerWork(self.callback)
-                self.worker.finished.connect(self._on_apply_done)
-                self.action_btn.setEnabled(False)
-                self.action_btn.setText("Running..")
-                self.worker.start()
-        else:
-            if self.undo_callback:
-                self.worker = OptimizerWork(self.undo_callback)
-                self.worker.finished.connect(self._on_revert_done)
-                self.action_btn.setEnabled(False)
-                self.action_btn.setText("Running..")
-                self.worker.start()
+    # ------------------------------------------------------------- eylemler
+    def trigger(self) -> None:
+        """Kartin ana eylemi: uygulanmadiysa uygula, uygulandiysa geri al."""
+        callback = self.undo_callback if self.is_applied else self.callback
+        if callback is None or (self._worker and self._worker.isRunning()):
+            return
 
-    def _on_apply_done(self, success):
+        self.action_btn.setEnabled(False)
+        self.action_btn.setText("Calisiyor...")
+
+        self._worker = OptimizerWork(callback, self)
+        self._worker.done.connect(self._on_done)
+        self._worker.start()
+
+    def _on_done(self, success: bool, error: str) -> None:
         self.action_btn.setEnabled(True)
-        if success:
-            self.is_applied = True
-            self.action_btn.setText("Revert")
-        else:
-            self.action_btn.setText("Apply")
 
-    def _on_revert_done(self, success):
-        self.action_btn.setEnabled(True)
         if success:
-            self.is_applied = False
-            self.action_btn.setText("Apply")
+            self.is_applied = not self.is_applied
+            self.state_changed.emit(self.is_applied)
+            notify(
+                self,
+                f"{self.title} {'uygulandi' if self.is_applied else 'geri alindi'}.",
+                "success",
+            )
+        elif error:
+            notify(self, f"{self.title}: {error}", "danger")
         else:
-            self.action_btn.setText("Revert")
+            notify(self, f"{self.title} uygulanamadi.", "warning")
 
-    def _apply_style(self):
-        self.setStyleSheet(f"""
-            QFrame#OptimizerCard {{
-                background-color: {Colors.BG_2};
-                border: 1px solid {Colors.BORDER};
-                border-radius: 12px;
-            }}
-            QFrame#OptimizerCard:hover {{
-                border: 1px solid {Colors.ACCENT};
-                background-color: {Colors.BG_TERTIARY};
-            }}
-        """)
+        self._sync_button()
+
+    def _sync_button(self) -> None:
+        if self.is_applied:
+            self.action_btn.setText("Geri Al")
+            self.action_btn.set_variant("ghost")
+            self.action_btn.setEnabled(self.undo_callback is not None)
+            if self.undo_callback is None:
+                self.action_btn.setText("Uygulandi")
+        else:
+            self.action_btn.setText("Uygula")
+            self.action_btn.set_variant("primary" if self.status == "safe" else "danger")
+        repolish(self)
