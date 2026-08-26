@@ -1,0 +1,205 @@
+name: Build
+
+# Uc platformda paket uretir. Etiket atildiginda (v1.2.3) Release olusturur.
+#
+# Onemli: capraz derleme yok - .exe Windows'ta, .app macOS'ta uretilmek
+# zorunda. Bu yuzden matrix.
+
+on:
+  push:
+    branches: [main, "refactor/**"]
+    tags: ["v*"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHON_VERSION: "3.12"
+  APP_NAME: "667 Utility"
+
+jobs:
+  # ------------------------------------------------------------------ lint
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Ruff
+        run: uvx ruff check --output-format=github .
+
+  # ----------------------------------------------------------------- build
+  build:
+    name: ${{ matrix.label }}
+    needs: lint
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            label: Linux
+            artifact: 667-utility-linux
+          - os: windows-latest
+            label: Windows
+            artifact: 667-utility-windows
+          - os: macos-latest
+            label: macOS
+            artifact: 667-utility-macos
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Python kur
+        run: uv python install ${{ env.PYTHON_VERSION }}
+
+      - name: Bagimliliklar
+        run: |
+          uv venv --python ${{ env.PYTHON_VERSION }}
+          uv pip install -r requirements.txt pyinstaller
+
+      # Qt'nin ubuntu runner'da import edilebilmesi icin sistem kutuphaneleri.
+      # Bunlar olmadan PyInstaller'in analiz asamasi PySide6'yi yukleyemez.
+      - name: Linux Qt bagimliliklari
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends \
+            libegl1 libgl1 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 \
+            libxcb-image0 libxcb-keysyms1 libxcb-randr0 libxcb-render-util0 \
+            libxcb-shape0 libxcb-xinerama0 libxcb-xkb1 libdbus-1-3 \
+            libfontconfig1 xvfb
+
+      # Pillow ile uretilen .icns her boyutu icermiyor olabilir.
+      # iconutil kanonik yol; sadece macOS'ta var.
+      - name: macOS ikonu uret
+        if: runner.os == 'macOS'
+        run: |
+          set -euo pipefail
+          ICONSET=build/icon.iconset
+          mkdir -p "$ICONSET"
+          for size in 16 32 64 128 256 512; do
+            sips -z $size $size assets/icon.png --out "$ICONSET/icon_${size}x${size}.png" >/dev/null
+            double=$((size * 2))
+            sips -z $double $double assets/icon.png \
+              --out "$ICONSET/icon_${size}x${size}@2x.png" >/dev/null
+          done
+          iconutil -c icns "$ICONSET" -o assets/icon.icns
+          echo "icon.icns yeniden uretildi"
+
+      - name: Paketle
+        run: uv run pyinstaller 667utility.spec --noconfirm --log-level WARN
+
+      # 'Derlendi' ile 'calisiyor' ayni sey degil. Uretilen paketi calistirip
+      # kaynak yollarinin gercekten cozuldugunu dogrula.
+      - name: Selftest (Linux)
+        if: runner.os == 'Linux'
+        run: xvfb-run -a ./dist/667Utility/667Utility --selftest
+
+      - name: Selftest (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: .\dist\667Utility\667Utility.exe --selftest
+
+      - name: Selftest (macOS)
+        if: runner.os == 'macOS'
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          "./dist/667 Utility.app/Contents/MacOS/667 Utility" --selftest
+
+      # ------------------------------------------------------------ paketleme
+      - name: Arsivle (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          cd dist
+          tar -czf ../667-utility-linux-x86_64.tar.gz 667Utility
+          cd ..
+          ls -lh 667-utility-linux-x86_64.tar.gz
+
+      - name: Arsivle (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          Compress-Archive -Path dist\667Utility\* `
+            -DestinationPath 667-utility-windows-x64.zip -Force
+          Get-Item 667-utility-windows-x64.zip | Select-Object Name, Length
+
+      - name: DMG olustur (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          set -euo pipefail
+          brew install create-dmg
+          # Imzasiz .app'lerde Gatekeeper karantinasi kullaniciyi engeller;
+          # README'de nasil asilacagi yaziyor.
+          create-dmg \
+            --volname "667 Utility" \
+            --window-size 640 400 \
+            --icon-size 110 \
+            --icon "667 Utility.app" 160 190 \
+            --app-drop-link 470 190 \
+            --no-internet-enable \
+            "667-utility-macos.dmg" \
+            "dist/667 Utility.app" \
+          || test -f "667-utility-macos.dmg"   # create-dmg imzasizda 2 donebiliyor
+          ls -lh 667-utility-macos.dmg
+
+      - name: Ciktiyi yukle
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: |
+            667-utility-linux-x86_64.tar.gz
+            667-utility-windows-x64.zip
+            667-utility-macos.dmg
+          if-no-files-found: error
+          retention-days: 14
+
+  # --------------------------------------------------------------- release
+  release:
+    name: Release
+    needs: build
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - run: ls -lhR artifacts
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: artifacts/*
+          generate_release_notes: true
+          draft: false
+          body: |
+            ## Kurulum
+
+            **macOS** — `.dmg` dosyasini ac, uygulamayi Applications'a surukle.
+            Uygulama imzasiz oldugu icin ilk acilista Gatekeeper engeller:
+            uygulamaya **sag tik > Ac** de, ya da terminalde
+            `xattr -dr com.apple.quarantine "/Applications/667 Utility.app"` calistir.
+
+            **Windows** — `.zip` dosyasini ac, `667Utility.exe` calistir.
+            SmartScreen "bilinmeyen yayinci" derse **Daha fazla bilgi > Yine de calistir**.
+            Optimizer ve Uninstaller yonetici hakki ister.
+
+            **Linux** — `.tar.gz` dosyasini ac, `667Utility` calistir.

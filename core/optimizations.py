@@ -11,6 +11,7 @@ import subprocess
 from pathlib import Path
 
 from core.platform_utils import IS_WINDOWS
+from core.resources import BAT_DIR, REGS_DIR
 
 #: `sc` ve `powercfg` cagrisi normalde aninda doner, ama servis durdurmak
 #: bazen bloke olur. 5 saniye cok kisaydi, servisleri yarim birakiyordu.
@@ -19,9 +20,9 @@ _CMD_TIMEOUT = 30
 #: Uzun surebilen betikler (bat dosyalari, appx kaldirma).
 _SCRIPT_TIMEOUT = 120
 
-_ASSETS = Path(__file__).resolve().parent.parent / "assets"
-REGS_PATH = _ASSETS / "regs"
-BAT_PATH = _ASSETS / "bat"
+# Yollar core.resources uzerinden: paketlenmis halde de dogru calissin.
+REGS_PATH = REGS_DIR
+BAT_PATH = BAT_DIR
 
 #: Windows'ta her subprocess cagrisinda konsol penceresi acilmasin.
 _NO_WINDOW = getattr(subprocess, "CREATE_NO_WINDOW", 0) if IS_WINDOWS else 0

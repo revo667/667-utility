@@ -91,6 +91,46 @@ src/ui/               Arayuz
 Widget'lar inline `setStyleSheet()` cagirmaz — gorunum farki bir Qt property'si
 ile ifade edilir ve secici `style.py` icine yazilir.
 
+## Paketleme
+
+Uc platform icin de calistirilabilir paket uretilir. **Capraz derleme yoktur** —
+`.exe` Windows'ta, `.app` macOS'ta uretilmek zorundadir.
+
+```bash
+uv pip install pyinstaller
+uv run pyinstaller 667utility.spec --noconfirm
+```
+
+Cikti:
+
+| Platform | Sonuc |
+|---|---|
+| macOS | `dist/667 Utility.app` |
+| Windows | `dist/667Utility/667Utility.exe` |
+| Linux | `dist/667Utility/667Utility` |
+
+Uretilen paketin gercekten calistigini dogrulamak icin:
+
+```bash
+./dist/667Utility/667Utility --selftest
+```
+
+Bu komut kaynak dosya yollarini (font, `.reg`, `apps.json`) kontrol eder ve
+tum sayfalari kurup kapatir. Paketlemede en sik kirilan sey yollardir —
+`.app`/`.exe` icinde `__file__` baska yere isaret ettigi icin dosyalar
+sessizce bulunamaz olur. `core/resources.py` bunu tek noktadan cozer.
+
+### CI
+
+`.github/workflows/build.yml` her push'ta uc platformda paralel paket uretir
+ve her birinde `--selftest` calistirir. `v*` etiketi atildiginda
+(`git tag v0.2.0 && git push --tags`) `.dmg`, `.zip` ve `.tar.gz` dosyalarini
+GitHub Release'e yukler.
+
+**Imzalama** yapilmiyor. macOS'ta ilk acilista Gatekeeper engeller
+(sag tik > Ac ile gecilir), Windows'ta SmartScreen uyarir. Imzalamak icin
+Apple Developer uyeligi ve bir code signing sertifikasi gerekir.
+
 ## Gelistirme
 
 ```bash

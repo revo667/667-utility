@@ -40,7 +40,84 @@ def relaunch_as_admin() -> bool:
         return False
 
 
+def selftest() -> int:
+    """Paketlenmis yapinin gercekten calisip calismadigini dogrular.
+
+    CI'da build sonrasi calistirilir: 'derlendi' ile 'calisiyor' ayni sey degil.
+    En sik kirilan sey kaynak dosya yollari - .app/.exe icinde __file__ baska
+    yere isaret ettigi icin font, .reg ve apps.json sessizce bulunamaz olur.
+    """
+    import json
+
+    from core.resources import (
+        APPS_JSON,
+        ASSETS_DIR,
+        BAT_DIR,
+        REGS_DIR,
+        base_path,
+        is_frozen,
+    )
+
+    problems: list[str] = []
+    print(f"paketlenmis : {is_frozen()}")
+    print(f"taban yol   : {base_path()}")
+
+    if not ASSETS_DIR.is_dir():
+        problems.append(f"assets klasoru yok: {ASSETS_DIR}")
+    else:
+        fonts = list(ASSETS_DIR.glob("*.ttf"))
+        regs = list(REGS_DIR.glob("*.reg")) if REGS_DIR.is_dir() else []
+        bats = list(BAT_DIR.glob("*.bat")) if BAT_DIR.is_dir() else []
+        print(f"font        : {len(fonts)}")
+        print(f"reg dosyasi : {len(regs)}")
+        print(f"bat dosyasi : {len(bats)}")
+        if not fonts:
+            problems.append("paketli font bulunamadi")
+        if not regs:
+            problems.append("assets/regs bos veya yok")
+
+    try:
+        categories = json.loads(APPS_JSON.read_text(encoding="utf-8"))
+        print(f"apps.json   : {len(categories)} kategori")
+    except (OSError, ValueError) as exc:
+        problems.append(f"apps.json okunamadi: {exc}")
+
+    # Qt katmani gercekten ayaga kalkiyor mu, sayfalar kuruluyor mu
+    try:
+        from PySide6.QtWidgets import QApplication
+
+        from src.ui.pages import available_pages
+        from src.ui.style import get_stylesheet
+
+        app = QApplication.instance() or QApplication([])
+        get_stylesheet()
+        specs = available_pages()
+        built = 0
+        for spec in specs:
+            try:
+                spec.factory()
+                built += 1
+            except Exception as exc:
+                problems.append(f"sayfa kurulamadi ({spec.key}): {exc}")
+        print(f"sayfa       : {built}/{len(specs)}")
+        del app
+    except Exception as exc:
+        problems.append(f"Qt katmani baslatilamadi: {exc}")
+
+    if problems:
+        print("\nBASARISIZ:")
+        for item in problems:
+            print(f"  - {item}")
+        return 1
+
+    print("\nSELFTEST GECTI")
+    return 0
+
+
 def main() -> int:
+    if "--selftest" in sys.argv:
+        return selftest()
+
     if not is_admin():
         if relaunch_as_admin():
             return 0

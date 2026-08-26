@@ -1,5 +1,4 @@
 import json
-import os
 
 from PySide6.QtCore import QThread, Signal
 from PySide6.QtWidgets import (
@@ -15,18 +14,20 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from core.resources import APPS_JSON
 from src.ui.theme import Spacing
 from src.ui.toast import notify
 from src.ui.views.modern_button import ModernButton
 
 
 def load_apps() -> dict:
-    path = os.path.join(os.path.dirname(__file__), "..", "..", "apps.json")
+    """apps.json'u okur. Yol core.resources uzerinden hesaplanir ki
+    paketlenmis (.app/.exe) halde de dogru dosyaya ulasilsin."""
     try:
-        with open(os.path.abspath(path), encoding="utf-8") as f:
-            return json.load(f)
-    except Exception as e:
-        print(f"apps.json yüklenemedi: {e}")
+        with open(APPS_JSON, encoding="utf-8") as handle:
+            return json.load(handle)
+    except (OSError, ValueError) as exc:
+        print(f"apps.json yuklenemedi: {exc}")
         return {}
 
 
