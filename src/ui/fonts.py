@@ -8,11 +8,11 @@ izin istemeden ve sadece bu surec icin yapar.
 
 from __future__ import annotations
 
-from pathlib import Path
-
 from PySide6.QtGui import QFontDatabase
 
-_ASSETS = Path(__file__).resolve().parents[2] / "assets"
+from core.resources import ASSETS_DIR
+
+_ASSETS = ASSETS_DIR
 
 _loaded: list[str] = []
 

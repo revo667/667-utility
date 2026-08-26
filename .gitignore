@@ -25,5 +25,10 @@ env/
 .DS_Store
 Thumbs.db
 
+# PyInstaller ciktilari
+build/
+dist/
+*.spec.bak
+
 # Uygulama ciktilari
 *.log
