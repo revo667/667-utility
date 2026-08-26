@@ -31,6 +31,7 @@ from src.ui.settings_store import settings
 from src.ui.style import get_stylesheet
 from src.ui.theme import Colors, Motion, Spacing
 from src.ui.views.modern_button import IconButton
+from src.ui.workers import stop_all_threads
 
 SITE_URL = "https://www.revo667.com"
 SITE_LABEL = "revo667.com"
@@ -347,6 +348,16 @@ class MainWindow(QMainWindow):
         self.rain_background.apply_settings()
         if self.rain_background.isVisible():
             self.rain_background.lower()
+
+    def closeEvent(self, event):
+        """Kapanmadan once arka plan islerini bekle.
+
+        Calisan bir QThread'in nesnesi yok edilirse Qt sureci abort eder
+        (SIGABRT). Sayfalar kendi closeEvent'lerini gormedigi icin - stack
+        icindeki widget'lara close() gitmez - sweep burada yapiliyor.
+        """
+        stop_all_threads(self)
+        super().closeEvent(event)
 
     def resizeEvent(self, event):
         central = self.centralWidget()

@@ -24,8 +24,8 @@ from src.ui.views.modern_button import ModernButton
 class SearchWorker(QThread):
     done = Signal(bool, list, str)
 
-    def __init__(self, query):
-        super().__init__()
+    def __init__(self, query, parent=None):
+        super().__init__(parent)
         self.query = query
 
     def run(self):
@@ -36,8 +36,8 @@ class SearchWorker(QThread):
 class InstallWorker(QThread):
     done = Signal(bool, str)
 
-    def __init__(self, package):
-        super().__init__()
+    def __init__(self, package, parent=None):
+        super().__init__(parent)
         self.package = package
 
     def run(self):
@@ -122,7 +122,7 @@ class MacInstallerPage(QWidget):
         self.progress.show()
         self.status.setText(f"Araniyor: {query}")
 
-        self._search_worker = SearchWorker(query)
+        self._search_worker = SearchWorker(query, self)
         self._search_worker.done.connect(self._on_search_done)
         self._search_worker.start()
 
@@ -164,7 +164,7 @@ class MacInstallerPage(QWidget):
         self.progress.show()
         self.status.setText(f"Kuruluyor: {package.token} ...")
 
-        self._install_worker = InstallWorker(package)
+        self._install_worker = InstallWorker(package, self)
         self._install_worker.done.connect(self._on_install_done)
         self._install_worker.start()
 

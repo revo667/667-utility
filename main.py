@@ -88,18 +88,30 @@ def selftest() -> int:
 
         from src.ui.pages import available_pages
         from src.ui.style import get_stylesheet
+        from src.ui.workers import stop_all_threads
 
         app = QApplication.instance() or QApplication([])
         get_stylesheet()
         specs = available_pages()
-        built = 0
+
+        # Sayfalari referansta TUT. Bazi sayfalar yapicisinda arka plan
+        # taramasi baslatiyor (ornek: Snapshots -> tmutil). Widget'i hemen
+        # birakirsak thread calisirken yok edilir ve Qt sureci abort eder.
+        widgets = []
         for spec in specs:
             try:
-                spec.factory()
-                built += 1
+                widgets.append(spec.factory())
             except Exception as exc:
                 problems.append(f"sayfa kurulamadi ({spec.key}): {exc}")
-        print(f"sayfa       : {built}/{len(specs)}")
+        print(f"sayfa       : {len(widgets)}/{len(specs)}")
+
+        # Isleri bitir, sonra birak.
+        app.processEvents()
+        for widget in widgets:
+            stop_all_threads(widget)
+            widget.deleteLater()
+        app.processEvents()
+        widgets.clear()
         del app
     except Exception as exc:
         problems.append(f"Qt katmani baslatilamadi: {exc}")

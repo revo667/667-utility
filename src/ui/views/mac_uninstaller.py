@@ -25,6 +25,7 @@ from core.mac_uninstaller import (
 )
 from core.platform_utils import human_size
 from src.ui.views.modern_button import ModernButton
+from src.ui.workers import stop_worker
 
 _ROLE_ENTRY = Qt.UserRole + 1
 
@@ -50,8 +51,8 @@ class AppScanWorker(QThread):
 class PlanWorker(QThread):
     done = Signal(object, str)
 
-    def __init__(self, entry, include_leftovers):
-        super().__init__()
+    def __init__(self, entry, include_leftovers, parent=None):
+        super().__init__(parent)
         self.entry = entry
         self.include_leftovers = include_leftovers
 
@@ -68,8 +69,8 @@ class PlanWorker(QThread):
 class UninstallWorker(QThread):
     done = Signal(bool, int, list)
 
-    def __init__(self, plan):
-        super().__init__()
+    def __init__(self, plan, parent=None):
+        super().__init__(parent)
         self.plan = plan
 
     def run(self):
@@ -147,6 +148,9 @@ class MacUninstallerPage(QWidget):
         layout.addLayout(bottom)
 
     def _track(self, worker):
+        # Parent vermek sart: Qt'nin nesneyi bulabilmesi ve kapanista
+        # stop_all_threads() sweep'inin calismasi buna bagli.
+        worker.setParent(self)
         self._workers.add(worker)
         worker.finished.connect(lambda w=worker: self._untrack(w))
         return worker
@@ -165,8 +169,7 @@ class MacUninstallerPage(QWidget):
 
     def closeEvent(self, event):
         for worker in list(self._workers):
-            if worker.isRunning():
-                worker.wait(5000)
+            stop_worker(worker)
         super().closeEvent(event)
 
     @Slot()

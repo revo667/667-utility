@@ -25,8 +25,8 @@ class WorkerThread(QThread):
 
     done = Signal(bool, str)
 
-    def __init__(self, fn, *args):
-        super().__init__()
+    def __init__(self, fn, *args, parent=None):
+        super().__init__(parent)
         self.fn = fn
         self.args = args
 
@@ -63,7 +63,7 @@ class ProgramRow(QFrame):
     def _on_uninstall(self):
         self.btn.setEnabled(False)
         self.btn.setText("Kaldiriliyor...")
-        self.worker = WorkerThread(uninstall_program, self.uninstall_str)
+        self.worker = WorkerThread(uninstall_program, self.uninstall_str, parent=self)
         self.worker.done.connect(self._on_done)
         self.worker.start()
 
@@ -173,7 +173,7 @@ class UninstallerView(QWidget):
 
         self.bloat_btn.setEnabled(False)
         self.bloat_btn.setText("Kaldiriliyor...")
-        self.worker = WorkerThread(remove_bloatware)
+        self.worker = WorkerThread(remove_bloatware, parent=self)
         self.worker.done.connect(self._on_bloat_done)
         self.worker.start()
 

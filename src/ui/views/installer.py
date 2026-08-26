@@ -35,8 +35,8 @@ class InstallWorker(QThread):
     progress = Signal(str)
     finished = Signal(bool, str)
 
-    def __init__(self, winget_ids: list[str]):
-        super().__init__()
+    def __init__(self, winget_ids: list[str], parent=None):
+        super().__init__(parent)
         self.winget_ids = winget_ids
 
     def run(self):
@@ -58,8 +58,8 @@ class InstallWorker(QThread):
 class SearchWorker(QThread):
     result = Signal(bool, str)
 
-    def __init__(self, query: str):
-        super().__init__()
+    def __init__(self, query: str, parent=None):
+        super().__init__(parent)
         self.query = query
 
     def run(self):
@@ -216,7 +216,7 @@ class InstallerView(QWidget):
         self.install_btn.setText("Kuruluyor...")
         self.status_label.setText(f"Starting installation of {len(selected)} app(s)...")
 
-        self.worker = InstallWorker(selected)
+        self.worker = InstallWorker(selected, self)
         self.worker.progress.connect(self.status_label.setText)
         self.worker.finished.connect(self._on_install_done)
         self.worker.start()
@@ -233,7 +233,7 @@ class InstallerView(QWidget):
             return
         self.search_btn.setEnabled(False)
         self.search_result.setText(f"Araniyor: {query} ...")
-        self.search_worker = SearchWorker(query)
+        self.search_worker = SearchWorker(query, self)
         self.search_worker.result.connect(self._on_search_done)
         self.search_worker.start()
 
