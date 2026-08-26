@@ -36,6 +36,7 @@ from src.ui.style import repolish
 from src.ui.theme import Colors, Spacing
 from src.ui.toast import notify
 from src.ui.views.modern_button import ModernButton
+from src.ui.workers import stop_worker
 
 _ROLE_SNAPSHOT = Qt.UserRole + 1
 
@@ -53,8 +54,8 @@ class ScanWorker(QThread):
 class ThinWorker(QThread):
     done = Signal(bool, int, str)
 
-    def __init__(self, target_bytes: int):
-        super().__init__()
+    def __init__(self, target_bytes: int, parent=None):
+        super().__init__(parent)
         self._target = target_bytes
 
     def run(self):
@@ -65,8 +66,8 @@ class ThinWorker(QThread):
 class DeleteWorker(QThread):
     done = Signal(bool, str)
 
-    def __init__(self, snapshot: Snapshot):
-        super().__init__()
+    def __init__(self, snapshot: Snapshot, parent=None):
+        super().__init__(parent)
         self._snapshot = snapshot
 
     def run(self):
@@ -177,7 +178,8 @@ class MacSnapshotsPage(QWidget):
     def _start_scan(self):
         self._set_busy(True)
         self.notice_label.setText("Snapshot'lar taraniyor...")
-        self._worker = ScanWorker()
+        stop_worker(self._worker)
+        self._worker = ScanWorker(self)
         self._worker.done.connect(self._on_scan_done)
         self._worker.start()
 
@@ -257,7 +259,8 @@ class MacSnapshotsPage(QWidget):
 
         self._set_busy(True)
         self.summary.setText("Inceltiliyor... bu islem birkac dakika surebilir.")
-        self._worker = ThinWorker(_THIN_TARGET_GB * 1024 ** 3)
+        stop_worker(self._worker)
+        self._worker = ThinWorker(_THIN_TARGET_GB * 1024 ** 3, self)
         self._worker.done.connect(self._on_thin_done)
         self._worker.start()
 
@@ -289,7 +292,8 @@ class MacSnapshotsPage(QWidget):
             return
 
         self._set_busy(True)
-        self._worker = DeleteWorker(snapshot)
+        stop_worker(self._worker)
+        self._worker = DeleteWorker(snapshot, self)
         self._worker.done.connect(self._on_delete_done)
         self._worker.start()
 
@@ -298,3 +302,8 @@ class MacSnapshotsPage(QWidget):
         notify(self, message or ("Silindi." if ok else "Silinemedi."),
                "success" if ok else "danger")
         self._start_scan()
+
+    def closeEvent(self, event):
+        # Calisan bir tmutil taramasi varken widget yok edilirse Qt abort eder.
+        stop_worker(self._worker)
+        super().closeEvent(event)

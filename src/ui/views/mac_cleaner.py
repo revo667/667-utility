@@ -21,6 +21,7 @@ from src.ui.style import repolish
 from src.ui.theme import Colors, Spacing
 from src.ui.toast import notify
 from src.ui.views.modern_button import ModernButton
+from src.ui.workers import stop_worker
 
 _ROLE_ITEM = Qt.UserRole + 1
 
@@ -41,8 +42,8 @@ class ScanWorker(QThread):
 class CleanWorker(QThread):
     finished_clean = Signal(int, list)
 
-    def __init__(self, items, permanent=False):
-        super().__init__()
+    def __init__(self, items, permanent=False, parent=None):
+        super().__init__(parent)
         self._items = items
         self._permanent = permanent
 
@@ -172,7 +173,7 @@ class MacCleanerPage(QWidget):
         self.progress.setValue(0)
         self.progress.show()
 
-        self._scan_worker = ScanWorker()
+        self._scan_worker = ScanWorker(self)
         self._scan_worker.progress.connect(self._on_scan_progress)
         self._scan_worker.finished_scan.connect(self._on_scan_finished)
         self._scan_worker.failed.connect(self._on_scan_failed)
@@ -274,7 +275,7 @@ class MacCleanerPage(QWidget):
         self.scan_button.setEnabled(False)
         self.summary_label.setText("Temizleniyor...")
 
-        self._clean_worker = CleanWorker(selected, permanent=False)
+        self._clean_worker = CleanWorker(selected, permanent=False, parent=self)
         self._clean_worker.finished_clean.connect(self._on_clean_finished)
         self._clean_worker.start()
 
@@ -294,3 +295,9 @@ class MacCleanerPage(QWidget):
             QMessageBox.warning(
                 self, "Bazi Ogeler Atlandi", "\n".join(errors[:15])
             )
+
+    def closeEvent(self, event):
+        # Tarama veya temizlik surerken widget yok edilirse Qt abort eder.
+        stop_worker(self._scan_worker)
+        stop_worker(self._clean_worker)
+        super().closeEvent(event)
