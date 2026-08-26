@@ -18,7 +18,8 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  PYTHON_VERSION: "3.12"
+  # .python-version ile ayni tutuluyor; farkli olursa uv "incompatible environment" uyarir.
+  PYTHON_VERSION: "3.13"
   APP_NAME: "667 Utility"
 
 jobs:
@@ -62,13 +63,13 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Python kur
-        run: uv python install ${{ env.PYTHON_VERSION }}
-
+      # 'uv sync' ortami pyproject.toml'a gore kurar. Onemli: daha once
+      # 'uv venv + uv pip install' kullaniliyordu, ama 'uv run' calismadan
+      # once ortami pyproject'e gore yeniden olusturup pyinstaller'i siliyordu
+      # ("Failed to spawn: pyinstaller"). Artik pyinstaller bir extra olarak
+      # tanimli, yani sync onu da kuruyor.
       - name: Bagimliliklar
-        run: |
-          uv venv --python ${{ env.PYTHON_VERSION }}
-          uv pip install -r requirements.txt pyinstaller
+        run: uv sync --extra build --python ${{ env.PYTHON_VERSION }}
 
       # Qt'nin ubuntu runner'da import edilebilmesi icin sistem kutuphaneleri.
       # Bunlar olmadan PyInstaller'in analiz asamasi PySide6'yi yukleyemez.
@@ -99,8 +100,9 @@ jobs:
           iconutil -c icns "$ICONSET" -o assets/icon.icns
           echo "icon.icns yeniden uretildi"
 
+      # --no-sync: ortam bir onceki adimda kuruldu, uv run onu bozmasin.
       - name: Paketle
-        run: uv run pyinstaller 667utility.spec --noconfirm --log-level WARN
+        run: uv run --no-sync pyinstaller 667utility.spec --noconfirm --log-level WARN
 
       # 'Derlendi' ile 'calisiyor' ayni sey degil. Uretilen paketi calistirip
       # kaynak yollarinin gercekten cozuldugunu dogrula.
