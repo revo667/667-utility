@@ -50,6 +50,12 @@ def run_app() -> None:
     if font is not None:
         app.setFont(font)
 
+    # Kimlik kapisi: Universe, trading journal ve bu uygulama tek hesabi paylasir.
+    from src.ui.views.login_gate import require_account
+
+    if require_account() is None:
+        return
+
     window = MainWindow()
     window.show()
     sys.exit(app.exec())
