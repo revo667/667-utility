@@ -14,6 +14,8 @@ import json
 import os
 import secrets
 import socket
+import ssl
+import subprocess
 import sys
 import threading
 import urllib.error
@@ -83,25 +85,199 @@ def clear_token() -> None:
         pass
 
 
-def fetch_account(token: str) -> Optional[dict]:
-    """Jetonu dogrular. Gecerliyse hesap bilgisini, degilse None doner."""
-    if not token:
+# --- TLS kok sertifikalari -------------------------------------------------
+# Python macOS anahtar zincirini kullanmaz; kendi CA paketini bekler. Python.org
+# kurulumunda "Install Certificates.command" bunu yapar, ama paketlenmis (.app)
+# bir uygulamada veya farkli bir kurulumda paket eksik olur ve her HTTPS istegi
+# CERTIFICATE_VERIFY_FAILED ile duser. Once varsayilani deneriz; sadece
+# dogrulama patlarsa isletim sisteminin kendi koklerine duseriz.
+
+_fallback_ctx: Optional[ssl.SSLContext] = None
+DIAGNOSTICS: list[str] = []
+
+
+def _macos_root_bundle() -> Optional[str]:
+    """macOS sistem koklerini PEM olarak disa aktarir ve onbellekler."""
+    path = config_dir() / "system-roots.pem"
+
+    try:
+        if path.exists() and path.stat().st_size > 4096:
+            return str(path)
+
+        result = subprocess.run(
+            [
+                "/usr/bin/security",
+                "find-certificate",
+                "-a",
+                "-p",
+                "/System/Library/Keychains/SystemRootCertificates.keychain",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=25,
+        )
+
+        if result.returncode != 0 or "BEGIN CERTIFICATE" not in result.stdout:
+            return None
+
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(result.stdout, encoding="utf-8")
+
+        return str(path)
+    except (OSError, ValueError, subprocess.SubprocessError):
         return None
 
+
+def _build_fallback_context() -> Optional[ssl.SSLContext]:
+    context = ssl.create_default_context()
+
+    try:
+        import certifi
+
+        context.load_verify_locations(certifi.where())
+        DIAGNOSTICS.append("certifi bulundu")
+        return context
+    except Exception:
+        pass
+
+    if sys.platform == "darwin":
+        bundle = _macos_root_bundle()
+
+        if bundle:
+            try:
+                context.load_verify_locations(bundle)
+                return context
+            except (ssl.SSLError, OSError):
+                return None
+
+    return None
+
+
+def _curl_get(url: str, token: str, timeout: int = 20) -> str:
+    """Son care: macOS'un kendi curl'u. Sistem guven deposunu kullanir, yani
+    Safari calisiyorsa bu da calisir. Jeton argv'ye degil stdin'e verilir ki
+    `ps` ciktisinda gorunmesin."""
+    config = f'url = "{url}"\nheader = "Authorization: Bearer {token}"\nheader = "Accept: application/json"\nsilent\nshow-error\nfail\n'
+
+    result = subprocess.run(
+        ["/usr/bin/curl", "--config", "-"],
+        input=config,
+        capture_output=True,
+        text=True,
+        timeout=timeout,
+    )
+
+    if result.returncode != 0:
+        raise OSError(f"curl {result.returncode}: {result.stderr.strip()[:120]}")
+
+    return result.stdout
+
+
+def _open(request: urllib.request.Request, timeout: int = 12) -> str:
+    """Istegi gonderir. Sertifika dogrulamasi patlarsa once OS koklerine,
+    sonra sistem curl'une duser. Hangi katmanin patladigi kaydedilir."""
+    global _fallback_ctx
+
+    try:
+        with urllib.request.urlopen(request, timeout=timeout, context=_fallback_ctx) as response:
+            return response.read().decode("utf-8")
+    except urllib.error.URLError as error:
+        verify_failed = isinstance(error.reason, ssl.SSLCertVerificationError) or (
+            "CERTIFICATE_VERIFY_FAILED" in str(error.reason)
+        )
+
+        if not verify_failed:
+            raise
+
+        if _fallback_ctx is None:
+            context = _build_fallback_context()
+
+            if context is not None:
+                _fallback_ctx = context
+                DIAGNOSTICS.append("os-kokleri yuklendi")
+
+                try:
+                    with urllib.request.urlopen(
+                        request, timeout=timeout, context=_fallback_ctx
+                    ) as response:
+                        return response.read().decode("utf-8")
+                except urllib.error.URLError as retry_error:
+                    DIAGNOSTICS.append(f"os-kokleri de yetmedi ({retry_error.reason})")
+            else:
+                DIAGNOSTICS.append("os-kokleri alinamadi")
+
+        if sys.platform == "darwin":
+            try:
+                body = _curl_get(request.full_url, request.headers.get("Authorization", "").removeprefix("Bearer "))
+                DIAGNOSTICS.append("sistem curl kullanildi")
+                return body
+            except (OSError, subprocess.SubprocessError) as curl_error:
+                DIAGNOSTICS.append(f"curl da patladi ({curl_error})")
+
+        raise
+
+
+# Yeni ad once denenir; site henuz guncellenmediyse eski yol calisir.
+ME_PATHS = ("/api/account/me", "/api/universe/me")
+
+
+def _probe(path: str, token: str) -> tuple[Optional[dict], str]:
+    """Tek bir uc noktayi dener. (hesap, hata_aciklamasi) doner."""
     request = urllib.request.Request(
-        f"{ACCOUNT_ORIGIN}/api/account/me",
+        f"{ACCOUNT_ORIGIN}{path}",
         headers={"Authorization": f"Bearer {token}", "Accept": "application/json"},
     )
 
     try:
-        with urllib.request.urlopen(request, timeout=12) as response:
-            return json.loads(response.read().decode("utf-8"))
+        data = json.loads(_open(request))
+
+        if isinstance(data, dict) and data.get("id"):
+            return data, ""
+
+        return None, f"{path}: beklenmeyen yanit"
     except urllib.error.HTTPError as error:
-        if error.code == 401:
-            clear_token()
-        return None
-    except (urllib.error.URLError, OSError, ValueError, TimeoutError):
-        return None
+        return None, f"{path}: sunucu {error.code}"
+    except urllib.error.URLError as error:
+        return None, f"{path}: baglanti yok ({error.reason})"
+    except ssl.SSLError as error:
+        return None, f"{path}: TLS hatasi ({error})"
+    except ValueError:
+        return None, f"{path}: yanit JSON degil (muhtemelen sayfa dondu)"
+    except (OSError, TimeoutError) as error:
+        return None, f"{path}: {error}"
+
+
+def verify(token: str) -> tuple[Optional[dict], str]:
+    """Jetonu dogrular. Basarisizsa NEDEN basarisiz oldugunu da soyler."""
+    if not token:
+        return None, "jeton yok"
+
+    problems = []
+    unauthorized = False
+
+    for path in ME_PATHS:
+        account, detail = _probe(path, token)
+
+        if account:
+            return account, ""
+
+        if detail.endswith("401"):
+            unauthorized = True
+
+        problems.append(detail)
+
+    if unauthorized:
+        clear_token()
+
+    if DIAGNOSTICS:
+        problems.append("adimlar: " + ", ".join(DIAGNOSTICS[-4:]))
+
+    return None, " / ".join(problems)
+
+
+def fetch_account(token: str) -> Optional[dict]:
+    """Geriye donuk uyumluluk icin sade surum."""
+    return verify(token)[0]
 
 
 def port_free(port: int) -> bool:
@@ -209,6 +385,29 @@ class SignInFlow:
         self._done.set()
 
 
-def current_account() -> Optional[dict]:
-    """Diskteki jetonla hesabi dogrular. Girissizse None."""
-    return fetch_account(load_token())
+def log_path() -> Path:
+    return config_dir() / "last-error.txt"
+
+
+def record(detail: str) -> None:
+    """Hatayi hem diske hem stdout'a yazar - diyalog metni kesilse bile kaybolmasin."""
+    if not detail:
+        return
+
+    print(f"[667utility/account] {detail}", flush=True)
+
+    try:
+        path = log_path()
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(detail, encoding="utf-8")
+    except OSError:
+        pass
+
+
+def current_account() -> tuple[Optional[dict], str]:
+    """Diskteki jetonla hesabi dogrular. (hesap, hata) doner."""
+    found, detail = verify(load_token())
+
+    record(detail)
+
+    return found, detail

@@ -17,12 +17,17 @@ from core import account
 
 
 class VerifyThread(QThread):
-    """Diskteki jetonu dogrular. Ag isi arayuzu kilitlemesin."""
+    """Jetonu dogrular. Ag isi arayuzu kilitlemesin."""
 
-    done = Signal(object)
+    done = Signal(object, str)
+
+    def __init__(self, parent=None, token: str = "") -> None:
+        super().__init__(parent)
+        self.token = token
 
     def run(self) -> None:
-        self.done.emit(account.current_account())
+        found, detail = account.verify(self.token or account.load_token())
+        self.done.emit(found, detail)
 
 
 class LoginGate(QDialog):
@@ -34,7 +39,7 @@ class LoginGate(QDialog):
 
         self.setWindowTitle("667 Utility")
         self.setModal(True)
-        self.setFixedWidth(420)
+        self.setMinimumWidth(460)
         self.setWindowFlag(Qt.WindowType.WindowCloseButtonHint, True)
 
         self.title = QLabel("revo667 hesabi")
@@ -42,6 +47,7 @@ class LoginGate(QDialog):
 
         self.status = QLabel("Oturum kontrol ediliyor...")
         self.status.setWordWrap(True)
+        self.status.setTextInteractionFlags(Qt.TextInteractionFlag.TextSelectableByMouse)
         self.status.setStyleSheet("color:rgba(255,255,255,0.55);")
 
         self.sign_in = QPushButton("revo667.com ile giris yap")
@@ -72,17 +78,20 @@ class LoginGate(QDialog):
 
         QTimer.singleShot(0, self.verifier.start)
 
-    def on_verified(self, result: object) -> None:
+    def on_verified(self, result: object, detail: str) -> None:
         if isinstance(result, dict):
             self.account = result
             self.accept()
             return
 
+        note = "" if detail in ("", "jeton yok") else f"\n\n({detail})"
+
         self.status.setText(
             "Universe, trading journal ve 667 Utility ayni hesabi kullanir.\n"
-            "Giris tarayicida tamamlanir."
+            "Giris tarayicida tamamlanir." + note
         )
         self.sign_in.setVisible(True)
+        self.adjustSize()
 
     def start_sign_in(self) -> None:
         self.sign_in.setEnabled(False)
@@ -109,20 +118,25 @@ class LoginGate(QDialog):
         account.save_token(self.flow.token)
         self.status.setText("Dogrulaniyor...")
 
-        self.verifier = VerifyThread(self)
+        self.verifier = VerifyThread(self, self.flow.token)
         self.verifier.done.connect(self.on_signed_in)
         self.verifier.start()
 
-    def on_signed_in(self, result: object) -> None:
+    def on_signed_in(self, result: object, detail: str) -> None:
         if isinstance(result, dict):
             self.account = result
             self.accept()
             return
 
-        self.fail("hesap dogrulanamadi")
+        self.fail(detail or "hesap dogrulanamadi")
 
     def fail(self, message: str) -> None:
-        self.status.setText(f"Giris basarisiz: {message}")
+        account.record(message)
+
+        self.status.setText(
+            f"Giris basarisiz.\n{message}\n\nAyrinti: {account.log_path()}"
+        )
+        self.adjustSize()
         self.sign_in.setEnabled(True)
         self.sign_in.setText("Tekrar dene")
 
