@@ -1,16 +1,3 @@
-"""Time Machine yerel snapshot yonetimi.
-
-Neden ayri modul: snapshot'lar dosya degil, APFS metadata. shutil ile silinmezler,
-silinmemelidirler de. Tek dogru arayuz tmutil.
-
-Tasarim kurallari:
-  1. Asla `deletelocalsnapshots` ile toplu silme. Sadece `thinlocalsnapshots`
-     ile hedeflenen kadar yer ac - sistem en eskisinden baslar.
-  2. MIN_AGE_HOURS'tan yeni snapshot'a dokunma. Dun sabah sildigin dosya orada.
-  3. Harici yedek hedefi tanimli degilse kullaniciyi uyar: snapshot onun TEK yedegi.
-  4. Sistem guncellemesi sirasinda calistirma (snapshot geri donus noktasidir).
-"""
-
 from __future__ import annotations
 
 import re

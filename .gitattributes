@@ -1,17 +1,14 @@
 # Satir sonlarini normallestir.
-#
-# Neden: process.py, style.py, theme.py ve dashboard.py depoya CRLF ile
-# girmisti, geri kalan her sey LF. Karisik satir sonu, ayni dosyayi iki
-# platformda acinca sahte diff uretir ve yamalarin uygulanmasini engeller.
+
 * text=auto eol=lf
 
-# Ikili dosyalar dokunulmadan kalsin
+
 *.ttf  binary
 *.png  binary
 *.jpg  binary
 *.ico  binary
 *.dmg  binary
 
-# Windows'ta calisan betikler CRLF kalmali
+
 *.bat  text eol=crlf
 *.reg  text eol=crlf

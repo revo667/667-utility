@@ -1,6 +1,6 @@
 [project]
 name = "utility667"
-# core/version.py ile ayni tutulmali - paket ve guncelleyici surumu oradan okur.
+# core/version.py ile ayni tutulmali
 version = "0.3.0"
 description = "667 Utility — Windows ve macOS icin sistem optimizasyon, kurulum ve temizlik araci"
 readme = "README.md"
@@ -16,14 +16,12 @@ dev = [
     "ruff>=0.15",
 ]
 # Paketleme araci. 'uv sync --extra build' ile kurulur.
-# Calisma zamani bagimliligi degil, bu yuzden ayri extra.
 build = [
     "pyinstaller>=6.11",
 ]
 
 [tool.uv]
-# Bu bir kutuphane degil, calistirilabilir bir uygulama. uv'nin projeyi
-# paketlemeye calismasi gereksiz - ve [project.scripts] olmadan zaten yapamaz.
+
 package = false
 
 [tool.ruff]

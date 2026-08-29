@@ -1,8 +1,4 @@
-"""667 Utility giris noktasi.
-
-Windows'ta bazi tweak'ler yonetici hakki ister; uygulama kendini yukseltilmis
-olarak yeniden baslatir. Diger platformlarda boyle bir adim yok.
-"""
+"""667 Utility """"
 
 from __future__ import annotations
 
@@ -11,7 +7,7 @@ import warnings
 
 from core.platform_utils import IS_WINDOWS
 
-# PySide6'nin bazi surumleri kapanista zararsiz RuntimeWarning basiyor.
+
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
 
@@ -41,12 +37,6 @@ def relaunch_as_admin() -> bool:
 
 
 def selftest() -> int:
-    """Paketlenmis yapinin gercekten calisip calismadigini dogrular.
-
-    CI'da build sonrasi calistirilir: 'derlendi' ile 'calisiyor' ayni sey degil.
-    En sik kirilan sey kaynak dosya yollari - .app/.exe icinde __file__ baska
-    yere isaret ettigi icin font, .reg ve apps.json sessizce bulunamaz olur.
-    """
     import json
 
     from core.resources import (
@@ -82,7 +72,6 @@ def selftest() -> int:
     except (OSError, ValueError) as exc:
         problems.append(f"apps.json okunamadi: {exc}")
 
-    # Qt katmani gercekten ayaga kalkiyor mu, sayfalar kuruluyor mu
     try:
         from PySide6.QtWidgets import QApplication
 
@@ -94,9 +83,6 @@ def selftest() -> int:
         get_stylesheet()
         specs = available_pages()
 
-        # Sayfalari referansta TUT. Bazi sayfalar yapicisinda arka plan
-        # taramasi baslatiyor (ornek: Snapshots -> tmutil). Widget'i hemen
-        # birakirsak thread calisirken yok edilir ve Qt sureci abort eder.
         widgets = []
         for spec in specs:
             try:
@@ -105,7 +91,7 @@ def selftest() -> int:
                 problems.append(f"sayfa kurulamadi ({spec.key}): {exc}")
         print(f"sayfa       : {len(widgets)}/{len(specs)}")
 
-        # Isleri bitir, sonra birak.
+
         app.processEvents()
         for widget in widgets:
             stop_all_threads(widget)

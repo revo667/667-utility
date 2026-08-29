@@ -1,11 +1,3 @@
-"""revo667 hesabi - tum ekosistem icin tek kimlik.
-
-Universe ile ayni akis: tarayicida revo667.com acilir, kullanici onaylar,
-site cihaz jetonunu 127.0.0.1 uzerindeki gecici sunucuya birakir. Jeton
-kullanici klasorune yazilir, sonraki aciliuslarda giris istenmez.
-
-Sadece standart kutuphane kullanilir - yeni bagimlilik yok.
-"""
 
 from __future__ import annotations
 
@@ -84,12 +76,8 @@ def clear_token() -> None:
         pass
 
 
-# --- TLS kok sertifikalari -------------------------------------------------
-# Python macOS anahtar zincirini kullanmaz; kendi CA paketini bekler. Python.org
-# kurulumunda "Install Certificates.command" bunu yapar, ama paketlenmis (.app)
-# bir uygulamada veya farkli bir kurulumda paket eksik olur ve her HTTPS istegi
-# CERTIFICATE_VERIFY_FAILED ile duser. Once varsayilani deneriz; sadece
-# dogrulama patlarsa isletim sisteminin kendi koklerine duseriz.
+# --- TLS kok sertifikalari
+
 
 _fallback_ctx: ssl.SSLContext | None = None
 DIAGNOSTICS: list[str] = []

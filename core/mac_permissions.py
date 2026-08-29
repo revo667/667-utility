@@ -1,11 +1,4 @@
-"""macOS izin (TCC) yonetimi.
 
-Onemli gercek: macOS'ta bir uygulama kendine izin VEREMEZ. Sadece iki sey yapabilir:
-  1. Korumali bir klasore dokunup sistemin izin dialogunu tetiklemek,
-  2. Kullaniciyi System Settings > Privacy & Security ekranina goturmek.
-
-Bu modul ikisini de yapar. Sihir yok, sadece durust bir yonlendirme.
-"""
 
 from __future__ import annotations
 
@@ -16,10 +9,10 @@ from pathlib import Path
 
 from core.platform_utils import HOME, IS_MACOS
 
-# Full Disk Access olmadan okunamayan kanonik dosya. FDA testi icin sondaj noktasi.
+# Full Disk Access olmadan okunamayan
 _FDA_PROBE = HOME / "Library" / "Application Support" / "com.apple.TCC" / "TCC.db"
 
-# TCC tarafindan korunan, ilk erisimde dialog tetikleyen klasorler
+# TCC tarafindan korunan
 PROTECTED_USER_DIRS = {
     "desktop": HOME / "Desktop",
     "documents": HOME / "Documents",
@@ -99,11 +92,6 @@ def check_access(applications_dir: Path = Path("/Applications")) -> AccessReport
 
 
 def prompt_native_dialogs() -> None:
-    """Korumali klasorlere dokunarak macOS'un kendi izin dialogunu tetikler.
-
-    Kullanici 'Allow' derse izin kalici olarak verilir. 'Don't Allow' derse
-    tekrar sormaz - o durumda open_privacy_settings() ile Ayarlar'a yonlendir.
-    """
     if not IS_MACOS:
         return
     for path in PROTECTED_USER_DIRS.values():

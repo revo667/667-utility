@@ -1,8 +1,4 @@
-# Calisma zamani bagimliliklari.
-# Kilitli surumler icin uv.lock kullanilir: `uv sync`
-#
-# Eskiden bu dosya `uv export` ciktisiydi: 55 satirlik hash listesi ve
-# icinde gelistirme araci olan ruff vardi. Artik sadece gercek bagimliliklar.
+
 
 psutil>=7.2.2
 PySide6>=6.9

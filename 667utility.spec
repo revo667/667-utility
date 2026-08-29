@@ -1,11 +1,4 @@
-# -*- mode: python ; coding: utf-8 -*-
-"""PyInstaller yapilandirmasi.
 
-Kullanim:  pyinstaller 667utility.spec --noconfirm
-
-Uc platformda da ayni dosya kullanilir; platforma ozgu kisimlar asagida
-sys.platform ile ayrilir. Ikon dosyasi yoksa build kirilmaz, ikonsuz devam eder.
-"""
 
 import re
 import sys
@@ -19,11 +12,7 @@ ASSETS = ROOT / "assets"
 
 
 def read_version():
-    """Surum core/version.py'de duruyor - burada ikinci bir kopya tutmuyoruz.
 
-    Import etmek yerine metni okuyoruz: spec, PyInstaller'in kendi
-    yorumlayicisinda calisiyor ve proje koku sys.path'te olmayabilir.
-    """
     text = (ROOT / "core" / "version.py").read_text(encoding="utf-8")
     match = re.search(r'^APP_VERSION\s*=\s*"([^"]+)"', text, re.M)
     return match.group(1) if match else "0.0.0"
@@ -36,20 +25,17 @@ IS_WIN = sys.platform == "win32"
 
 
 def icon_for_platform():
-    """Platforma uygun ikonu dondurur, yoksa None (build yine calisir)."""
     candidate = ASSETS / ("icon.icns" if IS_MAC else "icon.ico" if IS_WIN else "icon.png")
     return str(candidate) if candidate.is_file() else None
 
 
-# Calisma aninda okunan her sey buraya. assets/ icindeki .reg ve .bat
-# dosyalari Optimizer icin, .ttf font icin, apps.json Installer icin sart.
+
 datas = [
     (str(ASSETS), "assets"),
     (str(ROOT / "src" / "apps.json"), "src"),
 ]
 
-# Sayfalar tembel import ediliyor (src/ui/pages.py icindeki fabrikalar),
-# bu yuzden PyInstaller onlari statik analizle goremez. Elle bildir.
+
 hiddenimports = [
     "src.ui.views.dashboard",
     "src.ui.views.installer",
@@ -62,7 +48,7 @@ hiddenimports = [
     "src.ui.views.settings",
 ]
 
-# Kullanilmayan Qt modulleri paketi gereksiz sisiriyor.
+
 excludes = [
     "PySide6.QtWebEngineCore", "PySide6.QtWebEngineWidgets", "PySide6.QtWebEngineQuick",
     "PySide6.Qt3DCore", "PySide6.Qt3DRender", "PySide6.Qt3DAnimation", "PySide6.Qt3DExtras",
@@ -119,8 +105,6 @@ if IS_MAC:
             "CFBundleShortVersionString": VERSION,
             "CFBundleVersion": VERSION,
             "NSHighResolutionCapable": True,
-            # Cleaner ve Uninstaller ~/Library altini okur; macOS bu metinleri
-            # izin dialogunda gosterir. Yazilmazsa dialog ciplak gorunur.
             "NSDesktopFolderUsageDescription":
                 "Temizlik taramasi icin Masaustu klasorunu okumasi gerekiyor.",
             "NSDocumentsFolderUsageDescription":
