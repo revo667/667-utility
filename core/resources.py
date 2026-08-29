@@ -26,7 +26,7 @@ def resource_path(*parts: str) -> Path:
     return base_path().joinpath(*parts)
 
 
-#: Sik kullanilanlar 
+#: Sik kullanilanlar
 ASSETS_DIR = resource_path("assets")
 REGS_DIR = resource_path("assets", "regs")
 BAT_DIR = resource_path("assets", "bat")

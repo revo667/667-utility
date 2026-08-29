@@ -1,12 +1,9 @@
-"""667 Utility """
-
 from __future__ import annotations
 
 import sys
 import warnings
 
 from core.platform_utils import IS_WINDOWS
-
 
 warnings.filterwarnings("ignore", category=RuntimeWarning)
 
