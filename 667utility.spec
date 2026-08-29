@@ -7,15 +7,29 @@ Uc platformda da ayni dosya kullanilir; platforma ozgu kisimlar asagida
 sys.platform ile ayrilir. Ikon dosyasi yoksa build kirilmaz, ikonsuz devam eder.
 """
 
+import re
 import sys
 from pathlib import Path
 
 APP_NAME = "667 Utility"
 BUNDLE_ID = "com.revo667.utility"
-VERSION = "0.2.0"
 
 ROOT = Path(SPECPATH)
 ASSETS = ROOT / "assets"
+
+
+def read_version():
+    """Surum core/version.py'de duruyor - burada ikinci bir kopya tutmuyoruz.
+
+    Import etmek yerine metni okuyoruz: spec, PyInstaller'in kendi
+    yorumlayicisinda calisiyor ve proje koku sys.path'te olmayabilir.
+    """
+    text = (ROOT / "core" / "version.py").read_text(encoding="utf-8")
+    match = re.search(r'^APP_VERSION\s*=\s*"([^"]+)"', text, re.M)
+    return match.group(1) if match else "0.0.0"
+
+
+VERSION = read_version()
 
 IS_MAC = sys.platform == "darwin"
 IS_WIN = sys.platform == "win32"

@@ -22,7 +22,6 @@ import urllib.error
 import urllib.request
 import webbrowser
 from pathlib import Path
-from typing import Optional
 from urllib.parse import parse_qs, urlencode, urlparse
 
 ACCOUNT_ORIGIN = os.environ.get("REVO667_ACCOUNT_ORIGIN", "https://www.revo667.com")
@@ -92,11 +91,11 @@ def clear_token() -> None:
 # CERTIFICATE_VERIFY_FAILED ile duser. Once varsayilani deneriz; sadece
 # dogrulama patlarsa isletim sisteminin kendi koklerine duseriz.
 
-_fallback_ctx: Optional[ssl.SSLContext] = None
+_fallback_ctx: ssl.SSLContext | None = None
 DIAGNOSTICS: list[str] = []
 
 
-def _macos_root_bundle() -> Optional[str]:
+def _macos_root_bundle() -> str | None:
     """macOS sistem koklerini PEM olarak disa aktarir ve onbellekler."""
     path = config_dir() / "system-roots.pem"
 
@@ -128,7 +127,7 @@ def _macos_root_bundle() -> Optional[str]:
         return None
 
 
-def _build_fallback_context() -> Optional[ssl.SSLContext]:
+def _build_fallback_context() -> ssl.SSLContext | None:
     context = ssl.create_default_context()
 
     try:
@@ -151,6 +150,23 @@ def _build_fallback_context() -> Optional[ssl.SSLContext]:
                 return None
 
     return None
+
+
+def trust_context() -> ssl.SSLContext | None:
+    """Sistem koklerini yukleyen yedek SSL baglami - baska modullerin de
+    kullanmasi icin (bkz. core/updater.py).
+
+    Python'un kendi sertifika deposu bos gelebiliyor (macOS'ta "Install
+    Certificates" calistirilmamis kurulumlar, paketlenmis yapilar). Bu
+    durumda dogrulamayi kapatmak yerine isletim sisteminin koklerini
+    yukluyoruz. Bulunamazsa None doner - cagiran varsayilanla devam eder.
+    """
+    global _fallback_ctx
+
+    if _fallback_ctx is None:
+        _fallback_ctx = _build_fallback_context()
+
+    return _fallback_ctx
 
 
 def _curl_get(url: str, token: str, timeout: int = 20) -> str:
@@ -221,7 +237,7 @@ def _open(request: urllib.request.Request, timeout: int = 12) -> str:
 ME_PATHS = ("/api/account/me", "/api/universe/me")
 
 
-def _probe(path: str, token: str) -> tuple[Optional[dict], str]:
+def _probe(path: str, token: str) -> tuple[dict | None, str]:
     """Tek bir uc noktayi dener. (hesap, hata_aciklamasi) doner."""
     request = urllib.request.Request(
         f"{ACCOUNT_ORIGIN}{path}",
@@ -247,7 +263,7 @@ def _probe(path: str, token: str) -> tuple[Optional[dict], str]:
         return None, f"{path}: {error}"
 
 
-def verify(token: str) -> tuple[Optional[dict], str]:
+def verify(token: str) -> tuple[dict | None, str]:
     """Jetonu dogrular. Basarisizsa NEDEN basarisiz oldugunu da soyler."""
     if not token:
         return None, "jeton yok"
@@ -275,7 +291,7 @@ def verify(token: str) -> tuple[Optional[dict], str]:
     return None, " / ".join(problems)
 
 
-def fetch_account(token: str) -> Optional[dict]:
+def fetch_account(token: str) -> dict | None:
     """Geriye donuk uyumluluk icin sade surum."""
     return verify(token)[0]
 
@@ -298,7 +314,7 @@ class SignInFlow:
         self.token = ""
         self.error = ""
         self._done = threading.Event()
-        self._server: Optional[http.server.HTTPServer] = None
+        self._server: http.server.HTTPServer | None = None
 
     def _handler(self):
         flow = self
@@ -404,7 +420,7 @@ def record(detail: str) -> None:
         pass
 
 
-def current_account() -> tuple[Optional[dict], str]:
+def current_account() -> tuple[dict | None, str]:
     """Diskteki jetonla hesabi dogrular. (hesap, hata) doner."""
     found, detail = verify(load_token())
 

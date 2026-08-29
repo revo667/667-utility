@@ -23,7 +23,7 @@ Sidebar'daki sayfalar calistigin platforma gore otomatik belirlenir.
 | **Uninstaller** | macOS | Uygulama + artik dosyalarini birlikte kaldirma |
 | **Cleaner** | macOS | Onbellek, log, Xcode artiklari — kategorili ve boyutlu tarama |
 | **Snapshots** | macOS | Time Machine yerel snapshot yonetimi |
-| **Ayarlar** | Hepsi | Animasyon, yenileme araligi ve onay tercihleri |
+| **Ayarlar** | Hepsi | Animasyon, yenileme araligi, onay tercihleri ve guncelleme |
 
 ## Kurulum
 
@@ -74,6 +74,9 @@ core/                 Platform mantigi — Qt'ye bagimli degil
   mac_permissions.py    TCC izin durumu
   mac_responsible.py    Izni hangi uygulamanin aldigini tespit
   mac_snapshots.py      Time Machine snapshot yonetimi
+  account.py            revo667 hesabi (tek kimlik, tarayici akisi)
+  updater.py            GitHub Releases uzerinden kendi kendini guncelleme
+  version.py            APP_VERSION + CI'da damgalanan BUILD_SHA
 
 src/ui/               Arayuz
   theme.py              Renk, olcu, tipografi token'lari
@@ -85,11 +88,30 @@ src/ui/               Arayuz
   pages.py              Sayfa kayit defteri (platform filtreli)
   main_window.py        Kabuk: baslik cubugu, sidebar, sayfa yigini
   views/                Sayfalar
+    update_card.py        Ayarlar sayfasindaki guncelleme karti
 ```
 
 **Mimari kurali:** `core/` Qt bilmez, `src/ui/` sistem komutu calistirmaz.
 Widget'lar inline `setStyleSheet()` cagirmaz — gorunum farki bir Qt property'si
 ile ifade edilir ve secici `style.py` icine yazilir.
+
+## Guncelleme
+
+Ayarlar > GUNCELLEME bolumu GitHub Releases'i denetler, bu platforma ait
+dosyayi indirir ve uygulama kapandiktan sonra calisan kucuk bir betikle
+paketi yerine koyar. Kopyalama yarim kalirsa betik eski surumu geri koyar.
+macOS'ta karantina damgasi da kaldirilir, yani guncelleme sonrasi Gatekeeper
+adimini tekrarlamak gerekmez.
+
+- **Kanal** — `stable` yalnizca etiketlenmis (`v*`) yayinlari alir.
+  `nightly` en son yayini alir; `nightly` etiketi tasindigi icin surum
+  numarasi degismez, karsilastirma `BUILD_SHA` ile yapilir.
+- **Acilista ara** — acilistan birkac saniye sonra sessizce denetler,
+  yalnizca yeni surum varsa bildirim gosterir.
+- Paketlenmemis (kaynaktan) calistirmada guncelleme kapalidir.
+
+Surum numarasi `core/version.py` icindeki `APP_VERSION`'dir; `pyproject.toml`
+ve PyInstaller spec'i onunla ayni tutulur.
 
 ## Paketleme
 

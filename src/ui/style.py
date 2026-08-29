@@ -314,6 +314,27 @@ def get_stylesheet() -> str:
     QSpinBox:focus {{ border: 1px solid {c.ACCENT}; }}
     QSpinBox::up-button, QSpinBox::down-button {{ width: 14px; border: none; }}
 
+    QComboBox {{
+        background: {c.BG_ELEVATED};
+        border: 1px solid {c.BORDER};
+        border-radius: {r.SM}px;
+        padding: {s.XS}px {s.SM}px;
+        color: {c.TEXT_PRIMARY};
+        min-height: 24px;
+    }}
+    QComboBox:hover {{ border: 1px solid {c.BORDER_HOVER}; }}
+    QComboBox:focus {{ border: 1px solid {c.ACCENT}; }}
+    QComboBox::drop-down {{ border: none; width: 18px; }}
+    /* Acilir liste ayri bir ust pencere: govdeden rengi miras almiyor. */
+    QComboBox QAbstractItemView {{
+        background: {c.BG_ELEVATED};
+        border: 1px solid {c.BORDER};
+        color: {c.TEXT_PRIMARY};
+        selection-background-color: {c.ACCENT_SOFT};
+        selection-color: {c.TEXT_PRIMARY};
+        outline: none;
+    }}
+
     /* ============================================================ listeler */
     QListWidget, QTreeWidget, QTextEdit, QPlainTextEdit {{
         background: {c.BG_SURFACE};

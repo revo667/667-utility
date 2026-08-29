@@ -100,6 +100,18 @@ jobs:
           iconutil -c icns "$ICONSET" -o assets/icon.icns
           echo "icon.icns yeniden uretildi"
 
+      # Gece surumunde etiket (nightly) her yayinda tasiniyor, yani surum
+      # numarasi degismiyor. Guncelleyici hangi yapinin kurulu oldugunu
+      # yalnizca bu sha ile ayirt edebiliyor (core/updater.py).
+      # -i.bak: GNU ve BSD sed'in ikisinde de calisan tek bicim.
+      - name: Surum damgasi
+        shell: bash
+        run: |
+          set -euo pipefail
+          sed -i.bak "s|^BUILD_SHA = \"\"|BUILD_SHA = \"${GITHUB_SHA}\"|" core/version.py
+          rm -f core/version.py.bak
+          grep '^BUILD_SHA' core/version.py
+
       # --no-sync: ortam bir onceki adimda kuruldu, uv run onu bozmasin.
       - name: Paketle
         run: uv run --no-sync pyinstaller 667utility.spec --noconfirm --log-level WARN

@@ -21,6 +21,8 @@ DEFAULTS: dict[str, Any] = {
     "dashboard_refresh_ms": 2000,
     "confirm_destructive": True,
     "last_page": "dashboard",
+    "update_channel": "stable",   # stable | nightly
+    "update_check_on_start": True,
 }
 
 

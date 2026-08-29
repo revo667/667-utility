@@ -9,9 +9,11 @@ from __future__ import annotations
 from PySide6.QtCore import Qt, Slot
 from PySide6.QtWidgets import (
     QCheckBox,
+    QComboBox,
     QFrame,
     QHBoxLayout,
     QLabel,
+    QScrollArea,
     QSpinBox,
     QVBoxLayout,
     QWidget,
@@ -23,6 +25,7 @@ from src.ui.settings_store import config_path, settings
 from src.ui.theme import Colors, Spacing
 from src.ui.toast import notify
 from src.ui.views.modern_button import ModernButton
+from src.ui.views.update_card import UpdateCard
 
 
 class SettingRow(QFrame):
@@ -72,15 +75,26 @@ class SettingsPage(QWidget):
         layout.addWidget(subtitle)
         layout.addSpacing(Spacing.SM)
 
+        # Satirlar kucuk pencerede alt bilgiyi ekran disina itiyordu; kaydir.
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+        scroll.setFrameShape(QFrame.NoFrame)
+        scroll.setHorizontalScrollBarPolicy(Qt.ScrollBarAlwaysOff)
+
+        content = QWidget()
+        rows = QVBoxLayout(content)
+        rows.setContentsMargins(0, 0, Spacing.SM, 0)
+        rows.setSpacing(Spacing.MD)
+
         # ------------------------------------------------------ gorunum
         section = QLabel("GORUNUM")
         section.setObjectName("SidebarSection")
-        layout.addWidget(section)
+        rows.addWidget(section)
 
         self.rain_toggle = QCheckBox()
         self.rain_toggle.setChecked(bool(settings.get("rain_enabled")))
         self.rain_toggle.toggled.connect(self._on_rain_toggled)
-        layout.addWidget(SettingRow(
+        rows.addWidget(SettingRow(
             "Yagmur efekti",
             "Arka plandaki animasyon. Kapatmak pil omrunu uzatir.",
             self.rain_toggle,
@@ -92,7 +106,7 @@ class SettingsPage(QWidget):
         self.density_spin.setValue(int(settings.get("rain_density")))
         self.density_spin.setFixedWidth(90)
         self.density_spin.valueChanged.connect(self._on_density_changed)
-        layout.addWidget(SettingRow(
+        rows.addWidget(SettingRow(
             "Damla yogunlugu",
             "Ayni anda ekranda olan damla sayisi.",
             self.density_spin,
@@ -105,7 +119,7 @@ class SettingsPage(QWidget):
         self.fps_spin.setSuffix(" fps")
         self.fps_spin.setFixedWidth(90)
         self.fps_spin.valueChanged.connect(self._on_fps_changed)
-        layout.addWidget(SettingRow(
+        rows.addWidget(SettingRow(
             "Animasyon hizi",
             "45 fps ile 60 fps arasinda gozle gorulur fark yok, guc farki var.",
             self.fps_spin,
@@ -114,7 +128,7 @@ class SettingsPage(QWidget):
         # ------------------------------------------------------ davranis
         behaviour = QLabel("DAVRANIS")
         behaviour.setObjectName("SidebarSection")
-        layout.addWidget(behaviour)
+        rows.addWidget(behaviour)
 
         self.refresh_spin = QSpinBox()
         self.refresh_spin.setRange(1000, 10000)
@@ -125,7 +139,7 @@ class SettingsPage(QWidget):
         self.refresh_spin.valueChanged.connect(
             lambda v: settings.set("dashboard_refresh_ms", int(v))
         )
-        layout.addWidget(SettingRow(
+        rows.addWidget(SettingRow(
             "Dashboard yenileme araligi",
             "Sistem bilgilerinin guncellenme sikligi. Yeni deger sayfa yeniden acilinca gecerli olur.",
             self.refresh_spin,
@@ -136,13 +150,50 @@ class SettingsPage(QWidget):
         self.confirm_toggle.toggled.connect(
             lambda v: settings.set("confirm_destructive", bool(v))
         )
-        layout.addWidget(SettingRow(
+        rows.addWidget(SettingRow(
             "Yikici islemlerde onay iste",
             "Silme ve kaldirma islemleri once onay sorar. Kapatmani onermem.",
             self.confirm_toggle,
         ))
 
-        layout.addStretch()
+        # ---------------------------------------------------- guncelleme
+        update_section = QLabel("GUNCELLEME")
+        update_section.setObjectName("SidebarSection")
+        rows.addWidget(update_section)
+
+        self.update_card = UpdateCard()
+        rows.addWidget(self.update_card)
+
+        self.channel_combo = QComboBox()
+        # Veri (userData) ayar dosyasina yazilan deger; etiket sadece gorunum.
+        self.channel_combo.addItem("Kararli", "stable")
+        self.channel_combo.addItem("Gece surumu", "nightly")
+        self.channel_combo.setCurrentIndex(
+            max(0, self.channel_combo.findData(settings.get("update_channel")))
+        )
+        self.channel_combo.setFixedWidth(140)
+        self.channel_combo.currentIndexChanged.connect(self._on_channel_changed)
+        rows.addWidget(SettingRow(
+            "Guncelleme kanali",
+            "Kararli yalnizca etiketlenmis surumleri alir. Gece surumu son "
+            "yapiyi alir - daha yeni, daha az denenmis.",
+            self.channel_combo,
+        ))
+
+        self.startup_check_toggle = QCheckBox()
+        self.startup_check_toggle.setChecked(bool(settings.get("update_check_on_start")))
+        self.startup_check_toggle.toggled.connect(
+            lambda v: settings.set("update_check_on_start", bool(v))
+        )
+        rows.addWidget(SettingRow(
+            "Acilista guncelleme ara",
+            "Uygulama acildiktan birkac saniye sonra sessizce denetler.",
+            self.startup_check_toggle,
+        ))
+
+        rows.addStretch()
+        scroll.setWidget(content)
+        layout.addWidget(scroll, stretch=1)
 
         # ------------------------------------------------------ alt bilgi
         info = QLabel(f"Platform: {platform_name()}   ·   Ayar dosyasi: {config_path()}")
@@ -179,6 +230,10 @@ class SettingsPage(QWidget):
         settings.set("rain_fps", int(value))
         self._apply_to_window()
 
+    @Slot(int)
+    def _on_channel_changed(self, _index: int):
+        settings.set("update_channel", str(self.channel_combo.currentData()))
+
     @Slot()
     def _reset(self):
         settings.reset()
@@ -187,6 +242,10 @@ class SettingsPage(QWidget):
         self.fps_spin.setValue(int(settings.get("rain_fps")))
         self.refresh_spin.setValue(int(settings.get("dashboard_refresh_ms")))
         self.confirm_toggle.setChecked(bool(settings.get("confirm_destructive")))
+        self.channel_combo.setCurrentIndex(
+            max(0, self.channel_combo.findData(settings.get("update_channel")))
+        )
+        self.startup_check_toggle.setChecked(bool(settings.get("update_check_on_start")))
         self._apply_to_window()
         notify(self, "Ayarlar varsayilana donduruldu.", "success")
 

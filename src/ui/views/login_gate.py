@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Optional
-
 from PySide6.QtCore import Qt, QThread, QTimer, Signal
 from PySide6.QtWidgets import (
     QDialog,
@@ -34,8 +32,8 @@ class LoginGate(QDialog):
     def __init__(self) -> None:
         super().__init__()
 
-        self.account: Optional[dict] = None
-        self.flow: Optional[account.SignInFlow] = None
+        self.account: dict | None = None
+        self.flow: account.SignInFlow | None = None
 
         self.setWindowTitle("667 Utility")
         self.setModal(True)
@@ -147,7 +145,7 @@ class LoginGate(QDialog):
         super().reject()
 
 
-def require_account() -> Optional[dict]:
+def require_account() -> dict | None:
     """Girisi zorunlu kilar. Kullanici vazgecerse None doner."""
     gate = LoginGate()
 
