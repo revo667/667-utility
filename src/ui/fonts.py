@@ -1,10 +1,3 @@
-"""Paketle gelen fontu calisma aninda yukler.
-
-Eskiden font Windows kayit defterine kopyalaniyordu - yonetici hakki
-gerektiriyor, macOS/Linux'ta hic calismiyordu ve sisteme kalici olarak
-dokunuyordu. QFontDatabase.addApplicationFont() ayni isi uc platformda,
-izin istemeden ve sadece bu surec icin yapar.
-"""
 
 from __future__ import annotations
 
@@ -18,7 +11,7 @@ _loaded: list[str] = []
 
 
 def load_bundled_fonts() -> list[str]:
-    """assets/ altindaki tum .ttf/.otf dosyalarini yukler, aile adlarini doner."""
+
     global _loaded
     if _loaded:
         return _loaded

@@ -1,5 +1,3 @@
-"""Merkezi platform tespiti. Her yerde sys.platform yazmak yerine buradan import et."""
-
 from __future__ import annotations
 
 import sys

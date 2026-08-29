@@ -1,9 +1,3 @@
-"""Sayfa kayit defteri.
-
-Platform tespiti artik core.platform_utils'ten geliyor - burada ikinci bir
-kopyasi vardi, ikisi ayri ayri bakim istiyordu.
-"""
-
 from __future__ import annotations
 
 from collections.abc import Callable

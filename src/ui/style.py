@@ -1,13 +1,3 @@
-"""Merkezi QSS.
-
-Kural: widget'lar inline setStyleSheet() cagirmaz. Gorunum farki gerekiyorsa
-Qt property'si set edilir (ornek: setProperty("variant", "danger")) ve secici
-buraya yazilir. Boylece tum renkler tek dosyada kalir ve tema degistirmek
-tek noktadan mumkun olur.
-
-Property degistiginde Qt otomatik yeniden boyamaz - repolish() cagir.
-"""
-
 from __future__ import annotations
 
 from PySide6.QtWidgets import QWidget

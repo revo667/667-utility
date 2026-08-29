@@ -1,4 +1,4 @@
-"""667 Utility """"
+"""667 Utility """
 
 from __future__ import annotations
 

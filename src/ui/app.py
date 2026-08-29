@@ -1,4 +1,3 @@
-"""QApplication kurulumu ve giris noktasi."""
 
 from __future__ import annotations
 
@@ -17,11 +16,6 @@ ORG_NAME = "revo667"
 
 
 def _pick_ui_font() -> QFont | None:
-    """Sistemde bulunan ilk uygun aileyi sec.
-
-    QSS'teki font-family zinciri cogu durumda yeter, ama varsayilan QFont'u da
-    ayarlamak Qt'nin kendi cizdigi ogelerde (tooltip, menu) tutarlilik saglar.
-    """
     from PySide6.QtGui import QFontDatabase
 
     families = QFontDatabase.families()

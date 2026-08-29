@@ -1,9 +1,3 @@
-"""Tek renk/olcu kaynagi.
-
-Kural: hicbir widget kendi rengini string olarak yazmaz. Buradan alir.
-Inline setStyleSheet() gormek istemiyoruz - style.py merkezi QSS'i uretir.
-"""
-
 from __future__ import annotations
 
 

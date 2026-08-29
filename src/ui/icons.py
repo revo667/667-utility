@@ -1,12 +1,3 @@
-"""Vektor ikon seti.
-
-Neden SVG string: ikon dosyasi tasimak istemiyoruz, PNG olceklenince bulaniyor,
-Nerd Font glyph'leri ise fontun kurulu olmasina bagli. Inline SVG her platformda
-ayni gorunur ve rengi calisma aninda degistirilebilir.
-
-Ikonlar 24x24 grid, 1.75px stroke - Lucide ile ayni gorsel dil.
-"""
-
 from __future__ import annotations
 
 from functools import lru_cache
@@ -98,7 +89,7 @@ def _wrap(name: str, color: str) -> bytes:
 @lru_cache(maxsize=256)
 def pixmap(name: str, color: str = Colors.TEXT_SECONDARY, size: int = 18,
            ratio: float = 2.0) -> QPixmap:
-    """Ikonu istenen renk ve boyutta verir. Retina icin ratio ile buyutulur."""
+
     if name not in _PATHS:
         return QPixmap()
 

@@ -1,9 +1,3 @@
-"""Windows performans ayarlari.
-
-Her tweak'in bir geri alma karsiligi olmali. Geri alinamayan bir sey
-uyguluyorsan, kart 'warning' veya 'danger' olarak isaretlenmeli.
-"""
-
 from __future__ import annotations
 
 import os

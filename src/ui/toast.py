@@ -1,10 +1,3 @@
-"""Kayan bildirim.
-
-QMessageBox her seferinde akisi kesiyordu. Bilgi amacli mesajlar icin
-kendini kapatan, tiklanabilir bir toast daha az rahatsiz edici.
-Onay gerektiren islemler icin QMessageBox kalmali - toast onay soramaz.
-"""
-
 from __future__ import annotations
 
 from PySide6.QtCore import (

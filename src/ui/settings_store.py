@@ -1,9 +1,3 @@
-"""Kucuk kalici ayar deposu.
-
-QSettings yerine duz JSON: dosyanin nerede oldugunu biliyoruz, elle
-duzenlenebiliyor ve platformlar arasi ayni davraniyor.
-"""
-
 from __future__ import annotations
 
 import json

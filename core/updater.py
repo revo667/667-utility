@@ -1,16 +1,3 @@
-"""GitHub Releases uzerinden kendi kendini guncelleme.
-
-Universe'teki updater'in ayni mantigi, PySide6 tarafina tasinmis hali:
-yayinlari GitHub API'sinden okur, bu platforma ait dosyayi indirir, uygulama
-kapandiktan sonra calisan kucuk bir betikle paketi yerine koyar.
-
-Neden harici betik: calisan uygulama kendi dosyalarinin uzerine yazamaz
-(Windows kilitler, macOS'ta .app calisirken degistirilirse imza/kaynak
-cozumlemesi bozulur). Betik once surecin bitmesini bekler, sonra eski
-surumu yedege alir, kopyalama basarisiz olursa yedegi geri koyar.
-
-Sadece standart kutuphane kullanilir - yeni bagimlilik yok.
-"""
 
 from __future__ import annotations
 

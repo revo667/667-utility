@@ -1,10 +1,3 @@
-"""Arka plan yagmur efekti.
-
-Eskiden 16ms'lik timer pencere gorunmese bile calisiyordu: uygulama arka
-plandayken bile saniyede 60 kez tum pencereyi yeniden boyuyordu. Artik
-gorunurluge bagli duruyor ve fps/yogunluk ayarlardan geliyor.
-"""
-
 from __future__ import annotations
 
 import random

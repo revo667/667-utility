@@ -1,16 +1,3 @@
-"""Paketlenmis ve gelistirme calismasinda ayni yolu veren tek kaynak.
-
-Sorun: PyInstaller uygulamayi calistirirken dosyalari gecici bir klasore acar
-ve `__file__` oraya isaret eder. `Path(__file__).parent.parent / "assets"`
-gibi hesaplar sessizce yanlis yol uretir - font yuklenmez, .reg dosyalari
-bulunamaz, hicbir hata da gorunmez.
-
-Cozum: tabani tek yerden hesapla.
-  - PyInstaller altinda    -> sys._MEIPASS
-  - .app icinde (onedir)   -> yurutulebilirin yanindaki Resources
-  - normal calisma         -> proje koku
-"""
-
 from __future__ import annotations
 
 import sys
@@ -36,11 +23,10 @@ def base_path() -> Path:
 
 
 def resource_path(*parts: str) -> Path:
-    """resource_path("assets", "regs") -> dogru mutlak yol."""
     return base_path().joinpath(*parts)
 
 
-#: Sik kullanilanlar - tek tek hesaplamak yerine.
+#: Sik kullanilanlar 
 ASSETS_DIR = resource_path("assets")
 REGS_DIR = resource_path("assets", "regs")
 BAT_DIR = resource_path("assets", "bat")

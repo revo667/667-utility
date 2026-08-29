@@ -1,4 +1,3 @@
-"""Uygulama kabugu: baslik cubugu, sidebar, sayfa yigini."""
 
 from __future__ import annotations
 
@@ -41,7 +40,6 @@ _ROLE_SPEC = Qt.UserRole + 1
 
 
 class PlaceholderPage(QWidget):
-    """Sayfa yuklenemedigi zaman uygulamayi cokertmek yerine bunu gosteririz."""
 
     def __init__(self, title: str, message: str, parent=None):
         super().__init__(parent)
@@ -141,7 +139,6 @@ class TitleBar(QWidget):
 
 
 class Sidebar(QWidget):
-    """Bolum basliklarina gore gruplanmis, ikonlu gezinme."""
 
     def __init__(self, specs: list[PageSpec], parent=None):
         super().__init__(parent)
@@ -323,7 +320,7 @@ class MainWindow(QMainWindow):
 
     @staticmethod
     def _fade_in(widget: QWidget | None) -> None:
-        """Sayfa gecisinde kisa bir opaklik animasyonu - sicramayi yumusatir."""
+
         if widget is None:
             return
         effect = QGraphicsOpacityEffect(widget)
@@ -344,7 +341,7 @@ class MainWindow(QMainWindow):
 
     # -------------------------------------------------------------- olaylar
     def refresh_appearance(self) -> None:
-        """Ayarlar degistiginde cagrilir."""
+
         self.rain_background.apply_settings()
         if self.rain_background.isVisible():
             self.rain_background.lower()
