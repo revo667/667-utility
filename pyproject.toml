@@ -1,7 +1,7 @@
 [project]
 name = "utility667"
 # core/version.py ile ayni tutulmali - paket ve guncelleyici surumu oradan okur.
-version = "0.2.0"
+version = "0.3.0"
 description = "667 Utility — Windows ve macOS icin sistem optimizasyon, kurulum ve temizlik araci"
 readme = "README.md"
 requires-python = ">=3.11"
