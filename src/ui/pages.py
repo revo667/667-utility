@@ -36,9 +36,7 @@ class PageSpec:
         return current_platform() in self.platforms
 
 
-# --------------------------------------------------------------- fabrikalar
-# Import'lar bilerek fonksiyon icinde: acilista tum sayfalari yuklemek
-# gereksiz, kullanici hic acmayacagi sayfanin bagimliliklarini bekliyor.
+
 
 def _dashboard() -> QWidget:
     from src.ui.views.dashboard import DashboardView

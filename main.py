@@ -19,7 +19,7 @@ def is_admin() -> bool:
 
 
 def relaunch_as_admin() -> bool:
-    """UAC istemi gosterir. Kullanici reddederse False doner."""
+
     if not IS_WINDOWS:
         return False
     try:
@@ -27,7 +27,6 @@ def relaunch_as_admin() -> bool:
         result = ctypes.windll.shell32.ShellExecuteW(
             None, "runas", sys.executable, f'"{sys.argv[0]}"', None, 1
         )
-        # ShellExecuteW 32'den buyuk deger dondurunce basarili sayilir.
         return int(result) > 32
     except (AttributeError, OSError):
         return False
