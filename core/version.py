@@ -1,7 +1,7 @@
 
 from __future__ import annotations
 
-APP_VERSION = "0.3.0"
+APP_VERSION = "0.3.1"
 
 #: CI paketleme oncesi bu satiri yeniden yazar (build.yml -> "Surum damgasi").
 BUILD_SHA = ""
