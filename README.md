@@ -74,7 +74,7 @@ core/                 Platform mantigi — Qt'ye bagimli degil
   mac_permissions.py    TCC izin durumu
   mac_responsible.py    Izni hangi uygulamanin aldigini tespit
   mac_snapshots.py      Time Machine snapshot yonetimi
-  account.py            revo667 hesabi (tek kimlik, tarayici akisi)
+  tls.py                Sertifika deposu bos gelirse OS koklerine dusen SSL baglami
   updater.py            GitHub Releases uzerinden kendi kendini guncelleme
   version.py            APP_VERSION + CI'da damgalanan BUILD_SHA
 

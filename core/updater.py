@@ -16,7 +16,7 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlparse
 
-from core import account
+from core import tls
 from core.platform_utils import IS_LINUX, IS_MACOS, IS_WINDOWS
 from core.resources import is_frozen
 from core.version import APP_VERSION, BUILD_SHA, short_sha
@@ -81,7 +81,7 @@ def _urlopen(request: urllib.request.Request, timeout: int = TIMEOUT_SECONDS):
     """urlopen + sertifika yedegi.
 
     Python'un sertifika deposu bos gelen kurulumlarda (macOS'ta sik)
-    dogrulama patliyor. account.trust_context() isletim sisteminin
+    dogrulama patliyor. tls.trust_context() isletim sisteminin
     koklerini yukluyor - ayni cozumu burada tekrar yazmiyoruz.
     """
     try:
@@ -90,7 +90,7 @@ def _urlopen(request: urllib.request.Request, timeout: int = TIMEOUT_SECONDS):
         verify_failed = isinstance(error.reason, ssl.SSLCertVerificationError) or (
             "CERTIFICATE_VERIFY_FAILED" in str(error.reason)
         )
-        context = account.trust_context() if verify_failed else None
+        context = tls.trust_context() if verify_failed else None
 
         if context is None:
             raise
